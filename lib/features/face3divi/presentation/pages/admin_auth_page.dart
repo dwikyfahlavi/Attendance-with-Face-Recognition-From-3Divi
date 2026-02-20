@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:camera/camera.dart';
+import 'dart:typed_data';
 import '../bloc/admin_auth_bloc.dart';
 import '../bloc/user_session_bloc.dart';
 import '../bloc/settings_bloc.dart';
 import '../../../../core/services/permission_service.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/constants/face_recognition_config.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../data/face_sdk_session.dart';
+import '../../../../models/user_model.dart';
+import 'package:face_sdk_3divi/face_sdk_3divi.dart';
 import '../widgets/modern_button.dart';
 
 class AdminAuthPage extends StatefulWidget {
@@ -24,12 +30,214 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
   late Future<void> _initializeCameraFuture;
   bool _isCameraReady = false;
 
+  FaceSdkSession? _faceSdkSession;
+  AsyncCapturer? _capturer;
+  final List<_AdminTemplate> _adminTemplates = [];
+  bool _isFaceAuthProcessing = false;
+  bool _isFaceAuthReady = false;
+
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
     _pinController = TextEditingController();
-    _initializeCameraFuture = _initializeCamera();
+    _initializeCameraFuture = _initializeFaceAuth();
+  }
+
+  Future<void> _initializeFaceAuth() async {
+    try {
+      await _initializeCamera();
+
+      _faceSdkSession = await serviceLocator.faceSdkRepository.getSession();
+      _capturer = await _faceSdkSession!.service.createAsyncCapturer(
+        Config("common_capturer_blf_fda_front.xml"),
+      );
+
+      await _prepareAdminTemplates();
+
+      if (mounted) {
+        setState(() {
+          _isFaceAuthReady = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isFaceAuthReady = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Face auth initialization failed: $e'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _prepareAdminTemplates() async {
+    final session = _faceSdkSession;
+    final capturer = _capturer;
+    if (session == null || capturer == null) return;
+
+    for (final item in _adminTemplates) {
+      item.template.dispose();
+    }
+    _adminTemplates.clear();
+
+    final admins = serviceLocator.userBox.values.where((user) => user.isAdmin);
+
+    for (final admin in admins) {
+      try {
+        final Uint8List imageBytes = admin.imageBytes;
+        final List<RawSample> samples = await capturer.capture(imageBytes);
+        if (samples.isEmpty) continue;
+
+        final data = session.service.createContextFromEncodedImage(imageBytes);
+        data["objects"].pushBack(samples[0].toContext());
+
+        await session.qaa.process(data);
+        final quality = data["objects"][0]["quality"]["total_score"]
+            .get_value();
+        if (quality == null ||
+            quality < FaceRecognitionConfig.minQualityScore) {
+          samples[0].dispose();
+          data.dispose();
+          continue;
+        }
+
+        await session.templateExtractor.process(data);
+        final template = session.service.createContext(
+          data["objects"][0]["face_template"],
+        );
+
+        _adminTemplates.add(_AdminTemplate(user: admin, template: template));
+
+        samples[0].dispose();
+        data.dispose();
+      } catch (_) {
+        continue;
+      }
+    }
+  }
+
+  Future<void> _verifyAdminFace() async {
+    if (_isFaceAuthProcessing) return;
+    if (_cameraController == null || !_isCameraReady) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Camera is not ready yet.'),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+      return;
+    }
+    if (!_isFaceAuthReady || _capturer == null || _faceSdkSession == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Face authentication is still initializing.'),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+      return;
+    }
+    if (_adminTemplates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No admin face templates are available.'),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isFaceAuthProcessing = true;
+    });
+
+    try {
+      final photo = await _cameraController!.takePicture();
+      final Uint8List imageBytes = await photo.readAsBytes();
+
+      final capturer = _capturer!;
+      final session = _faceSdkSession!;
+
+      final List<RawSample> samples = await capturer.capture(imageBytes);
+      if (samples.isEmpty) {
+        throw Exception('No face detected. Please center your face.');
+      }
+      if (samples.length > 1) {
+        for (final sample in samples) {
+          sample.dispose();
+        }
+        throw Exception('Multiple faces detected. Only one face is allowed.');
+      }
+
+      final RawSample sample = samples.first;
+      final data = session.service.createContextFromEncodedImage(imageBytes);
+      data["objects"].pushBack(sample.toContext());
+
+      await session.qaa.process(data);
+      final quality = data["objects"][0]["quality"]["total_score"].get_value();
+      if (quality == null || quality < FaceRecognitionConfig.minQualityScore) {
+        data.dispose();
+        sample.dispose();
+        throw Exception(
+          'Low image quality. Please improve lighting and retry.',
+        );
+      }
+
+      await session.templateExtractor.process(data);
+      final liveTemplate = session.service.createContext(
+        data["objects"][0]["face_template"],
+      );
+
+      _AdminTemplate? bestMatch;
+      double bestScore = 0.0;
+
+      for (final adminTemplate in _adminTemplates) {
+        final compareCtx = session.service.createContext({
+          "template1": adminTemplate.template,
+          "template2": liveTemplate,
+        });
+
+        await session.verification.process(compareCtx);
+        final score = compareCtx["result"]["score"].get_value() ?? 0.0;
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = adminTemplate;
+        }
+        compareCtx.dispose();
+      }
+
+      liveTemplate.dispose();
+      data.dispose();
+      sample.dispose();
+
+      if (bestMatch == null ||
+          bestScore < FaceRecognitionConfig.minMatchScore) {
+        throw Exception('Face does not match any admin profile.');
+      }
+
+      if (!mounted) return;
+      context.read<AdminAuthBloc>().add(
+        AuthenticateWithFaceEvent(bestMatch.user.nik),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Face verification failed: $e'),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isFaceAuthProcessing = false;
+        });
+      }
+    }
   }
 
   Future<void> _initializeCamera() async {
@@ -106,6 +314,10 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
     _pageController.dispose();
     _pinController.dispose();
     _cameraController?.dispose();
+    _capturer?.dispose();
+    for (final item in _adminTemplates) {
+      item.template.dispose();
+    }
     super.dispose();
   }
 
@@ -118,6 +330,12 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
           if (state.user != null) {
             context.read<UserSessionBloc>().add(UserLoggedInEvent(state.user!));
           }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Welcome, ${state.user?.nama ?? 'Admin'}!'),
+              backgroundColor: AppColors.successGreen,
+            ),
+          );
           // Navigate to admin dashboard
           Navigator.of(context).pushReplacementNamed('/admin/dashboard');
         } else if (state is AdminAuthFailed) {
@@ -374,16 +592,20 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
                         SizedBox(
                           width: double.infinity,
                           child: ModernButton(
-                            label: state is AdminAuthLoading
+                            label:
+                                state is AdminAuthLoading ||
+                                    _isFaceAuthProcessing
                                 ? 'Verifying...'
                                 : 'Start Verification',
-                            onPressed: () {
-                              context.read<AdminAuthBloc>().add(
-                                AuthenticateWithFaceEvent('test_nik'),
-                              );
+                            onPressed: () async {
+                              await _verifyAdminFace();
                             },
-                            isLoading: state is AdminAuthLoading,
-                            isEnabled: state is! AdminAuthLoading,
+                            isLoading:
+                                state is AdminAuthLoading ||
+                                _isFaceAuthProcessing,
+                            isEnabled:
+                                state is! AdminAuthLoading &&
+                                !_isFaceAuthProcessing,
                           ),
                         ),
                         if (state is AdminAuthFailed)
@@ -415,6 +637,16 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
                     isPrimary: false,
                   ),
                 ),
+                if (_isFaceAuthReady)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      'Loaded admin profiles: ${_adminTemplates.length}',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -427,6 +659,13 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
       ),
     );
   }
+}
+
+class _AdminTemplate {
+  final RegisteredUser user;
+  final Context template;
+
+  const _AdminTemplate({required this.user, required this.template});
 }
 
 class _SoftBlob extends StatelessWidget {

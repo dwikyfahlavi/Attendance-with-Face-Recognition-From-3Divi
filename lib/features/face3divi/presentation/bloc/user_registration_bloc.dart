@@ -8,6 +8,7 @@ import 'package:image/image.dart' as img_lib;
 import '../../data/user_repository.dart';
 import '../../data/face_sdk_repository.dart';
 import '../../../../models/user_model.dart';
+import '../../../../core/constants/face_recognition_config.dart';
 
 // Events
 abstract class UserRegistrationEvent {}
@@ -248,7 +249,7 @@ class UserRegistrationBloc
 
       final double qualityScore = object["quality"]["total_score"].get_value();
 
-      if (qualityScore < 0.5) {
+      if (qualityScore < FaceRecognitionConfig.minQualityScore) {
         data.dispose();
         face.dispose();
         emit(

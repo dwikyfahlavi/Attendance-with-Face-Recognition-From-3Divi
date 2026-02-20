@@ -12,6 +12,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../models/user_model.dart';
 import '../../../../models/absen_model.dart';
+import '../../../../core/constants/face_recognition_config.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/services/audio_service.dart';
@@ -390,7 +391,7 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
     Context object = data["objects"][0];
     _qaaTotalScore = object["quality"]["total_score"].get_value();
 
-    if (_qaaTotalScore < 0.6) {
+    if (_qaaTotalScore < FaceRecognitionConfig.minQualityScore) {
       _resetMatch();
       showTopBanner(
         "Low quality image, face the camera!",
@@ -475,7 +476,8 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
 
     if (mounted) {
       setState(() {
-        if (bestMatch != null && highestScore > 0.75) {
+        if (bestMatch != null &&
+            highestScore > FaceRecognitionConfig.minMatchScore) {
           matchedUser = bestMatch.user;
           matchedScore = highestScore;
           matchedImage = Image.memory(
@@ -531,7 +533,7 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
             children: [
               _badgeInfo(
                 "Quality: ${_qaaTotalScore.toStringAsFixed(3)}",
-                color: _qaaTotalScore >= 0.6
+                color: _qaaTotalScore >= FaceRecognitionConfig.minQualityScore
                     ? AppColors.successGreen
                     : AppColors.warningOrange,
               ),
