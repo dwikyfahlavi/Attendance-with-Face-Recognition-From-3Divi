@@ -1,0 +1,45 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "fr3divi",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "fr3divi (profile mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "fr3divi (release mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        },
+        {
+            "name": "face_sdk_3divi",
+            "cwd": "flutter_sdk/face_sdk_3divi",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "face_sdk_3divi (profile mode)",
+            "cwd": "flutter_sdk/face_sdk_3divi",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "face_sdk_3divi (release mode)",
+            "cwd": "flutter_sdk/face_sdk_3divi",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        }
+    ]
+}

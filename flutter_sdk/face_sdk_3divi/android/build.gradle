@@ -1,0 +1,47 @@
+group 'com.example.face_sdk_3divi'
+version '1.0'
+
+buildscript {
+    repositories {
+        google()
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:7.0.0'
+    }
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        jcenter()
+    }
+}
+
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 31
+
+    defaultConfig {
+        minSdkVersion 21
+    }
+
+    namespace = "com.example.face_sdk_3divi"
+}
+
+task copyLibraries() {
+    copy {
+        from "${projectDir}/../assets/lib/arm64-v8a"
+        into "${rootDir}/../assets/lib/arm64-v8a"
+        include "*.so"
+    }
+
+    copy {
+        from "${projectDir}/../assets/lib/armeabi-v7a"
+        into "${rootDir}/../assets/lib/armeabi-v7a"
+        include "*.so"
+    }
+}
+
+preBuild.dependsOn copyLibraries

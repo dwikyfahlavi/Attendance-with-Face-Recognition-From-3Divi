@@ -1,0 +1,100 @@
+import 'package:flutter/material.dart';
+import 'package:fr3divi/features/register/detect_face_page.dart';
+import 'package:hive/hive.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:face_sdk_3divi/face_sdk_3divi.dart'; // Ensure this import is here
+
+import 'data/models/user_model.dart';
+import 'screens/home_page.dart';
+import 'screens/register_page.dart';
+import 'screens/attendance_page.dart';
+import 'features/register/register_form_page.dart';
+
+// --- ADD THESE GLOBAL VARIABLE DECLARATIONS HERE ---
+FacerecService? globalFacerecService;
+AsyncProcessingBlock? globalQaa;
+AsyncProcessingBlock? globalTemplateExtractor;
+// --- END GLOBAL VARIABLE DECLARATIONS ---
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final appDocumentDir = await getApplicationDocumentsDirectory();
+  Hive.init(appDocumentDir.path);
+  Hive.registerAdapter(UserModelAdapter());
+  await Hive.openBox<UserModel>('usersBox');
+
+  runApp(MyApp());
+}
+
+class MyApp extends StatefulWidget {
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool _isSdkInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeFaceSdk();
+  }
+
+  Future<void> _initializeFaceSdk() async {
+    try {
+      print("🛠️ Inisialisasi FaceSDK di MyApp State...");
+      globalFacerecService = await FaceSdkPlugin.createFacerecService();
+      globalQaa = await globalFacerecService!.createAsyncProcessingBlock({
+        "unit_type": "QUALITY_ASSESSMENT_ESTIMATOR",
+        "modification": "assessment",
+        "config_name": "quality_assessment.xml",
+        "version": 1,
+      });
+      globalTemplateExtractor = await globalFacerecService!
+          .createAsyncProcessingBlock({
+            "unit_type": "FACE_TEMPLATE_EXTRACTOR",
+            "modification": "30",
+          });
+
+      setState(() {
+        _isSdkInitialized = true;
+      });
+      print("✅ FaceSDK berhasil diinisialisasi di MyApp State.");
+    } catch (e) {
+      print("❌ Gagal inisialisasi FaceSDK di MyApp State: $e");
+      // Handle error, maybe show a message to the user and don't proceed
+    }
+  }
+
+  @override
+  void dispose() {
+    globalFacerecService?.dispose();
+    globalQaa?.dispose();
+    globalTemplateExtractor?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isSdkInitialized) {
+      return const MaterialApp(
+        home: Scaffold(body: Center(child: CircularProgressIndicator())),
+      );
+    }
+
+    return MaterialApp(
+      title: 'Face Recognition Demo',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => HomePage(),
+        '/register': (context) => RegisterPage(),
+        '/register_form': (context) => RegisterFormPage(),
+        '/attendance': (context) => AttendancePage(),
+        // Deteksi wajah tidak perlu parameter di sini karena akan menerima argumen dari Navigator.pushNamed
+        '/detect_face_capture': (context) => DetectFacePage(),
+      },
+    );
+  }
+}
