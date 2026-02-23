@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -51,7 +50,7 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
 
   RegisteredUser? matchedUser;
   double? matchedScore;
-  Image? matchedImage;
+  Widget? matchedImage;
   bool? matchedIsReal;
   List<_DBUserTemplate> dbTemplates = [];
 
@@ -161,7 +160,10 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
 
       for (final user in box.values) {
         try {
-          final Uint8List imageBytes = user.imageBytes;
+          final imageBytes = user.imageBytes;
+          if (!user.hasTemplate || imageBytes == null) {
+            continue;
+          }
           final List<RawSample> rss = await capturer.capture(imageBytes);
           if (rss.isEmpty) continue;
 
@@ -480,11 +482,10 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
             highestScore > FaceRecognitionConfig.minMatchScore) {
           matchedUser = bestMatch.user;
           matchedScore = highestScore;
-          matchedImage = Image.memory(
-            bestMatch.user.imageBytes,
-            width: 60,
-            height: 60,
-          );
+          final imageBytes = bestMatch.user.imageBytes;
+          matchedImage = imageBytes == null
+              ? const Icon(Icons.person, size: 60, color: AppColors.secondary)
+              : Image.memory(imageBytes, width: 60, height: 60);
           matchedIsReal = isReal;
           _tryInsertAbsen(bestMatch.user);
         } else {
@@ -614,12 +615,22 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
               // User photo
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.memory(
-                  user.imageBytes,
-                  width: 100,
-                  height: 100,
-                  fit: BoxFit.cover,
-                ),
+                child: user.imageBytes == null
+                    ? Container(
+                        width: 100,
+                        height: 100,
+                        color: AppColors.backgroundLight,
+                        child: const Icon(
+                          Icons.person,
+                          color: AppColors.textSecondary,
+                        ),
+                      )
+                    : Image.memory(
+                        user.imageBytes!,
+                        width: 100,
+                        height: 100,
+                        fit: BoxFit.cover,
+                      ),
               ),
               const SizedBox(height: 16),
 

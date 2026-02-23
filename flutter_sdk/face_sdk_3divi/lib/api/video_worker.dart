@@ -300,7 +300,6 @@ class VideoWorker extends _ComplexObject {
     return result;
   }
 
-  // TODO: reafactor this
   TrackingCallbackData _parseTrackingCallback(
       Pointer<Void> trackingCallbackPointer) {
     final stream_id = getInt64(

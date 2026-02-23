@@ -27,6 +27,9 @@ class SettingsRepository {
     required int lateMinute,
     String? updatedBy,
     bool? faceRecognitionEnabled,
+    String? baseProtocol,
+    String? ipPort,
+    String? apiPath,
   }) async {
     try {
       final current = await getSettings();
@@ -37,6 +40,9 @@ class SettingsRepository {
         updatedBy: updatedBy,
         faceRecognitionEnabled:
             faceRecognitionEnabled ?? current.faceRecognitionEnabled,
+        baseProtocol: baseProtocol ?? current.baseProtocol,
+        ipPort: ipPort ?? current.ipPort,
+        apiPath: apiPath ?? current.apiPath,
       );
       await _settingsBox.put(_defaultKey, settings);
     } catch (e) {
@@ -52,6 +58,9 @@ class SettingsRepository {
         lateHour: hour,
         lateMinute: minute,
         updatedBy: current.updatedBy,
+        baseProtocol: current.baseProtocol,
+        ipPort: current.ipPort,
+        apiPath: current.apiPath,
       );
     } catch (e) {
       throw Exception('Failed to update late hour: $e');
@@ -88,6 +97,9 @@ class SettingsRepository {
         lateMinute: current.lateMinute,
         updatedBy: current.updatedBy,
         faceRecognitionEnabled: enabled,
+        baseProtocol: current.baseProtocol,
+        ipPort: current.ipPort,
+        apiPath: current.apiPath,
       );
     } catch (e) {
       throw Exception('Failed to update face recognition setting: $e');
@@ -100,6 +112,27 @@ class SettingsRepository {
       await _settingsBox.delete(_defaultKey);
     } catch (e) {
       throw Exception('Failed to reset settings: $e');
+    }
+  }
+
+  Future<void> setApiConfig({
+    required String ipPort,
+    String? baseProtocol,
+    String? apiPath,
+  }) async {
+    try {
+      final current = await getSettings();
+      await saveSettings(
+        lateHour: current.lateHour,
+        lateMinute: current.lateMinute,
+        updatedBy: current.updatedBy,
+        faceRecognitionEnabled: current.faceRecognitionEnabled,
+        baseProtocol: baseProtocol ?? current.baseProtocol,
+        ipPort: ipPort,
+        apiPath: apiPath ?? current.apiPath,
+      );
+    } catch (e) {
+      throw Exception('Failed to update API config: $e');
     }
   }
 }

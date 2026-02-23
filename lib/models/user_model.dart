@@ -12,7 +12,7 @@ class RegisteredUser extends HiveObject {
   String nama;
 
   @HiveField(2)
-  Uint8List imageBytes;
+  Uint8List? imageBytes;
 
   @HiveField(3)
   bool isAdmin;
@@ -23,12 +23,40 @@ class RegisteredUser extends HiveObject {
   @HiveField(5)
   DateTime? lastAttendanceTime;
 
+  @HiveField(6, defaultValue: false)
+  bool hasTemplate;
+
+  @HiveField(7)
+  int? employeeId;
+
+  @HiveField(8)
+  String? employeeRole;
+
+  @HiveField(9)
+  String? companyCode;
+
+  @HiveField(10)
+  String? estateCode;
+
+  @HiveField(11)
+  String? plantCode;
+
+  @HiveField(12)
+  String? rawUserJson;
+
   RegisteredUser({
     required this.nik,
     required this.nama,
-    required this.imageBytes,
+    this.imageBytes,
     this.isAdmin = false,
     this.department,
     this.lastAttendanceTime,
+    this.hasTemplate = false,
+    this.employeeId,
+    this.employeeRole,
+    this.companyCode,
+    this.estateCode,
+    this.plantCode,
+    this.rawUserJson,
   });
 }

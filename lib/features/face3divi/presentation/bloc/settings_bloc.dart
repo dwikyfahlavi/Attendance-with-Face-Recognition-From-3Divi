@@ -18,6 +18,14 @@ class UpdateLateHourEvent extends SettingsEvent {
   UpdateLateHourEvent({required this.hour, required this.minute});
 }
 
+class UpdateApiConfigEvent extends SettingsEvent {
+  final String ipPort;
+  final String? baseProtocol;
+  final String? apiPath;
+
+  UpdateApiConfigEvent({required this.ipPort, this.baseProtocol, this.apiPath});
+}
+
 // States
 abstract class SettingsState {
   const SettingsState();
@@ -49,6 +57,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     on<LoadSettingsEvent>(_onLoadSettings);
     on<UpdateFaceRecognitionEvent>(_onUpdateFaceRecognition);
     on<UpdateLateHourEvent>(_onUpdateLateHour);
+    on<UpdateApiConfigEvent>(_onUpdateApiConfig);
   }
 
   Future<void> _onLoadSettings(
@@ -83,6 +92,23 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   ) async {
     try {
       await _repository.setLateHour(event.hour, event.minute);
+      final settings = await _repository.getSettings();
+      emit(SettingsLoaded(settings));
+    } catch (e) {
+      emit(SettingsError(e.toString()));
+    }
+  }
+
+  Future<void> _onUpdateApiConfig(
+    UpdateApiConfigEvent event,
+    Emitter<SettingsState> emit,
+  ) async {
+    try {
+      await _repository.setApiConfig(
+        ipPort: event.ipPort,
+        baseProtocol: event.baseProtocol,
+        apiPath: event.apiPath,
+      );
       final settings = await _repository.getSettings();
       emit(SettingsLoaded(settings));
     } catch (e) {

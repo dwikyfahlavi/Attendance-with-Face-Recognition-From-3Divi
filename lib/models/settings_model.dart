@@ -16,8 +16,17 @@ class SettingsModel extends HiveObject {
   @HiveField(3)
   String? updatedBy;
 
-  @HiveField(4)
+  @HiveField(4, defaultValue: false)
   bool faceRecognitionEnabled; // Enable/disable face recognition feature
+
+  @HiveField(5)
+  String baseProtocol;
+
+  @HiveField(6)
+  String ipPort;
+
+  @HiveField(7)
+  String apiPath;
 
   SettingsModel({
     this.lateHour = 9, // Default: 9:00 AM
@@ -25,7 +34,12 @@ class SettingsModel extends HiveObject {
     required this.lastUpdated,
     this.updatedBy,
     this.faceRecognitionEnabled = true, // Default: enabled
+    this.baseProtocol = 'http://',
+    this.ipPort = '172.21.23.70:81',
+    this.apiPath = '/api/v1_1',
   });
+
+  String get apiBaseUrl => '$baseProtocol$ipPort$apiPath';
 
   /// Get late hour as TimeOfDay-like format (hour:minute)
   String get lateTimeString =>

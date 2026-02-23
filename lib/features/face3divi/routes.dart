@@ -3,6 +3,7 @@ const String routeHome = '/';
 
 // Admin routes
 const String adminAuthRoute = '/admin/auth';
+const String adminApiLoginRoute = '/admin/login-api';
 const String adminDashboardRoute = '/admin/dashboard';
 const String adminMembersRoute = '/admin/members';
 const String adminMemberDetailRoute = '/admin/members/detail';

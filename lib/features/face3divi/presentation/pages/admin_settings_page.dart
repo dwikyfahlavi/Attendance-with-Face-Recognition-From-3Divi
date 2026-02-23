@@ -16,6 +16,7 @@ class AdminSettingsPage extends StatefulWidget {
 class _AdminSettingsPageState extends State<AdminSettingsPage> {
   late TextEditingController _lateHourController;
   late TextEditingController _lateMinuteController;
+  late TextEditingController _ipPortController;
   late TextEditingController _currentPinController;
   late TextEditingController _newPinController;
   late TextEditingController _confirmPinController;
@@ -29,9 +30,31 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
     super.initState();
     _lateHourController = TextEditingController(text: '09');
     _lateMinuteController = TextEditingController(text: '00');
+    _ipPortController = TextEditingController(text: '172.21.23.70:81');
     _currentPinController = TextEditingController();
     _newPinController = TextEditingController();
     _confirmPinController = TextEditingController();
+  }
+
+  Future<void> _saveApiConfig() async {
+    final ipPort = _ipPortController.text.trim();
+    if (ipPort.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('IP/Port cannot be empty'),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+      return;
+    }
+
+    context.read<SettingsBloc>().add(UpdateApiConfigEvent(ipPort: ipPort));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('API configuration saved'),
+        backgroundColor: AppColors.successGreen,
+      ),
+    );
   }
 
   Future<void> _saveSettings() async {
@@ -83,6 +106,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   void dispose() {
     _lateHourController.dispose();
     _lateMinuteController.dispose();
+    _ipPortController.dispose();
     _currentPinController.dispose();
     _newPinController.dispose();
     _confirmPinController.dispose();
@@ -101,6 +125,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
           _lateMinuteController.text = settingsState.settings.lateMinute
               .toString()
               .padLeft(2, '0');
+          _ipPortController.text = settingsState.settings.ipPort;
         }
 
         final isFaceRecognitionEnabled = (settingsState is SettingsLoaded)
@@ -140,6 +165,45 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                     ),
                   ),
                   const SizedBox(height: 24),
+                  _buildSettingSection(
+                    title: 'API Configuration',
+                    subtitle: 'Set API server IP and port for /auth/login',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('IP:Port', style: AppTextStyles.labelSmall),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _ipPortController,
+                          keyboardType: TextInputType.url,
+                          decoration: InputDecoration(
+                            hintText: '172.21.23.70:81',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Base URL format: http://<IP:PORT>/api/v1_1',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ModernButton(
+                      label: 'Save API Config',
+                      onPressed: _saveApiConfig,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  const Divider(thickness: 1),
+                  const SizedBox(height: 32),
                   // Late hour settings
                   _buildSettingSection(
                     title: 'Late Hour Configuration',

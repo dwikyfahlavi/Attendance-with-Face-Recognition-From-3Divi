@@ -49,6 +49,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   intl: ^0.20.2
   camera: ^0.11.3+1
+  dio: ^5.9.0
+  image: ^4.5.4
+  crypto: ^3.0.6
 
 dev_dependencies:
   flutter_test:

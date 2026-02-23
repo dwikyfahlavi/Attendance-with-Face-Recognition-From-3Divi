@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'dart:typed_data';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
 import '../bloc/member_detail_bloc.dart';
+import 'member_template_capture_page.dart';
 import '../../../../models/user_model.dart';
 
 class AdminMemberDetailPage extends StatelessWidget {
@@ -144,11 +145,39 @@ class AdminMemberDetailPage extends StatelessWidget {
                             ),
                             const SizedBox(height: 20),
                             _buildStatusInfo(displayUser),
+                            const SizedBox(height: 8),
+                            _buildTemplateInfo(displayUser),
                           ],
                         ),
                       ),
                       const SizedBox(height: 24),
                       // Action buttons
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.secondary,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: isLoading
+                              ? null
+                              : () => _captureTemplate(context, displayUser),
+                          child: Text(
+                            displayUser.hasTemplate
+                                ? 'Update Face Template'
+                                : 'Add Face Template',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -283,6 +312,53 @@ class AdminMemberDetailPage extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildTemplateInfo(RegisteredUser user) {
+    final hasTemplate = user.hasTemplate && user.imageBytes != null;
+    final color = hasTemplate
+        ? AppColors.successGreen
+        : AppColors.warningOrange;
+
+    return Row(
+      children: [
+        Icon(
+          hasTemplate ? Icons.verified : Icons.no_accounts,
+          color: color,
+          size: 16,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          hasTemplate ? 'Face template available' : 'Face template not set',
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _captureTemplate(
+    BuildContext context,
+    RegisteredUser user,
+  ) async {
+    final bytes = await Navigator.of(context).push<Uint8List>(
+      MaterialPageRoute(builder: (_) => const MemberTemplateCapturePage()),
+    );
+
+    if (bytes == null) {
+      return;
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    context.read<MemberDetailBloc>().add(
+      UpdateMemberTemplate(user: user, imageBytes: bytes),
     );
   }
 

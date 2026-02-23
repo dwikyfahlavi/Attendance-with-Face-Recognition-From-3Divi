@@ -50,7 +50,6 @@ class Capturer extends _ComplexObject {
     return rss;
   }
 
-  // TODO: refactoring this
   List<RawSample> captureRawImageF(RawImageF image) {
     final cap = _dll_handle.lookupFunction<_CapCap_c, _CapCap_dart>(
         '${_c_namespace}Capturer_capture_raw_image_with_crop');

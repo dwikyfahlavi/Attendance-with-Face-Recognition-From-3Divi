@@ -160,6 +160,15 @@ class AdminDashboardPage extends StatelessWidget {
           Navigator.of(context).pushNamed('/admin/attendance');
         },
       ),
+      // _MenuItem(
+      //   icon: Icons.login,
+      //   title: 'Login API',
+      //   subtitle: 'Sync user from server',
+      //   color: AppColors.primaryPurple,
+      //   onTap: () {
+      //     Navigator.of(context).pushNamed('/admin/login-api');
+      //   },
+      // ),
       _MenuItem(
         icon: Icons.settings,
         title: 'Settings',

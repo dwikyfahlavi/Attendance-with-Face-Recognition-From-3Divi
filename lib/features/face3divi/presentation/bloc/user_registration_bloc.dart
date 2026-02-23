@@ -21,17 +21,9 @@ class CaptureFacePhotoEvent extends UserRegistrationEvent {
 }
 
 class RegisterUserEvent extends UserRegistrationEvent {
-  final String nik;
-  final String name;
-  final String? department;
-  final bool isAdmin;
+  final RegisteredUser user;
 
-  RegisterUserEvent({
-    required this.nik,
-    required this.name,
-    this.department,
-    this.isAdmin = false,
-  });
+  RegisterUserEvent({required this.user});
 }
 
 class ResetRegistrationEvent extends UserRegistrationEvent {}
@@ -314,20 +306,29 @@ class UserRegistrationBloc
       }
 
       // Check if user already exists
-      if (_userRepository.existsByNik(event.nik)) {
+      if (_userRepository.existsByNik(event.user.nik)) {
         emit(
-          UserRegistrationError('User with NIK ${event.nik} already exists.'),
+          UserRegistrationError(
+            'User with NIK ${event.user.nik} already exists.',
+          ),
         );
         return;
       }
 
       // Create new user
       final newUser = RegisteredUser(
-        nik: event.nik,
-        nama: event.name,
+        nik: event.user.nik,
+        nama: event.user.nama,
         imageBytes: _processedImageBytes!,
-        isAdmin: event.isAdmin,
-        department: event.department,
+        hasTemplate: true,
+        isAdmin: event.user.isAdmin,
+        department: event.user.department,
+        employeeId: event.user.employeeId,
+        employeeRole: event.user.employeeRole,
+        companyCode: event.user.companyCode,
+        estateCode: event.user.estateCode,
+        plantCode: event.user.plantCode,
+        rawUserJson: event.user.rawUserJson,
       );
 
       // Save to repository (Hive)
@@ -335,7 +336,7 @@ class UserRegistrationBloc
 
       emit(
         UserRegistrationSuccess(
-          'User "${event.name}" registered successfully!',
+          'User "${event.user.nama}" registered successfully!',
         ),
       );
 

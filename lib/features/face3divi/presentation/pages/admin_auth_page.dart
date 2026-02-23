@@ -89,7 +89,10 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
 
     for (final admin in admins) {
       try {
-        final Uint8List imageBytes = admin.imageBytes;
+        final imageBytes = admin.imageBytes;
+        if (!admin.hasTemplate || imageBytes == null) {
+          continue;
+        }
         final List<RawSample> samples = await capturer.capture(imageBytes);
         if (samples.isEmpty) continue;
 

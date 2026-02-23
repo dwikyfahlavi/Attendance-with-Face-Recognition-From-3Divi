@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/services/permission_service.dart';
 import '../../../../core/di/service_locator.dart';
+import '../../../../models/user_model.dart';
 import '../widgets/modern_button.dart';
 import '../bloc/user_registration_bloc.dart';
 
@@ -222,10 +223,12 @@ class _AdminRegistrationPageContentState
     // Register via BLoC
     context.read<UserRegistrationBloc>().add(
       RegisterUserEvent(
-        nik: _nikController.text.trim(),
-        name: _nameController.text.trim(),
-        department: _selectedDepartment,
-        isAdmin: false,
+        user: RegisteredUser(
+          nik: _nikController.text.trim(),
+          nama: _nameController.text.trim(),
+          department: _selectedDepartment,
+          isAdmin: false,
+        ),
       ),
     );
   }

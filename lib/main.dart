@@ -12,6 +12,7 @@ import 'data/hive_boxes.dart';
 import 'core/services/logger_service.dart';
 import 'features/face3divi/presentation/pages/home.dart';
 import 'features/face3divi/presentation/pages/admin_auth_page.dart';
+import 'features/face3divi/presentation/pages/admin_remote_login_page.dart';
 import 'features/face3divi/presentation/pages/admin_dashboard_page.dart';
 import 'features/face3divi/presentation/pages/admin_registration_page.dart';
 import 'features/face3divi/presentation/pages/admin_members_page.dart';
@@ -152,6 +153,7 @@ class _AttendanceAppState extends State<AttendanceApp>
         ],
         child: const AdminAuthPage(),
       ),
+      '/admin/login-api': (context) => const AdminRemoteLoginPage(),
       '/admin/dashboard': (context) => MultiBlocProvider(
         providers: [
           BlocProvider(

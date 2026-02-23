@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:typed_data';
 import '../../data/user_repository.dart';
 import '../../../../models/user_model.dart';
 
@@ -29,6 +30,13 @@ class UpdateMemberDetail extends MemberDetailEvent {
 class DeleteMemberDetail extends MemberDetailEvent {
   final RegisteredUser user;
   DeleteMemberDetail(this.user);
+}
+
+class UpdateMemberTemplate extends MemberDetailEvent {
+  final RegisteredUser user;
+  final Uint8List imageBytes;
+
+  UpdateMemberTemplate({required this.user, required this.imageBytes});
 }
 
 // States
@@ -69,6 +77,7 @@ class MemberDetailBloc extends Bloc<MemberDetailEvent, MemberDetailState> {
     on<InitializeMemberDetail>(_onInitialize);
     on<UpdateMemberDetail>(_onUpdate);
     on<DeleteMemberDetail>(_onDelete);
+    on<UpdateMemberTemplate>(_onUpdateTemplate);
   }
 
   Future<void> _onInitialize(
@@ -123,6 +132,28 @@ class MemberDetailBloc extends Bloc<MemberDetailEvent, MemberDetailState> {
           'Member deleted successfully',
         ),
       );
+    } catch (e) {
+      emit(MemberDetailError(event.user, e.toString()));
+    }
+  }
+
+  Future<void> _onUpdateTemplate(
+    UpdateMemberTemplate event,
+    Emitter<MemberDetailState> emit,
+  ) async {
+    try {
+      emit(MemberDetailLoading(event.user));
+      event.user.imageBytes = event.imageBytes;
+      event.user.hasTemplate = true;
+      await _repository.updateUser(event.user);
+      emit(
+        MemberDetailActionSuccess(
+          event.user,
+          MemberDetailAction.updated,
+          'Face template updated successfully',
+        ),
+      );
+      emit(MemberDetailLoaded(event.user));
     } catch (e) {
       emit(MemberDetailError(event.user, e.toString()));
     }

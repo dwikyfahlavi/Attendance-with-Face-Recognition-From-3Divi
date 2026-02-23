@@ -21,13 +21,17 @@ class SettingsModelAdapter extends TypeAdapter<SettingsModel> {
       lateMinute: fields[1] as int,
       lastUpdated: fields[2] as DateTime,
       updatedBy: fields[3] as String?,
+      faceRecognitionEnabled: fields[4] == null ? false : fields[4] as bool,
+      baseProtocol: fields[5] as String,
+      ipPort: fields[6] as String,
+      apiPath: fields[7] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, SettingsModel obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.lateHour)
       ..writeByte(1)
@@ -35,7 +39,15 @@ class SettingsModelAdapter extends TypeAdapter<SettingsModel> {
       ..writeByte(2)
       ..write(obj.lastUpdated)
       ..writeByte(3)
-      ..write(obj.updatedBy);
+      ..write(obj.updatedBy)
+      ..writeByte(4)
+      ..write(obj.faceRecognitionEnabled)
+      ..writeByte(5)
+      ..write(obj.baseProtocol)
+      ..writeByte(6)
+      ..write(obj.ipPort)
+      ..writeByte(7)
+      ..write(obj.apiPath);
   }
 
   @override

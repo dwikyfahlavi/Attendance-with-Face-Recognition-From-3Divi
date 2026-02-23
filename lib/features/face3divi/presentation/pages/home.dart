@@ -55,7 +55,7 @@ class HomePage extends StatelessWidget {
                 ModernButton(
                   label: 'Admin Panel',
                   onPressed: () {
-                    Navigator.of(context).pushNamed('/admin/auth');
+                    Navigator.of(context).pushNamed('/admin/login-api');
                   },
                   icon: Icons.admin_panel_settings,
                   width: double.infinity,

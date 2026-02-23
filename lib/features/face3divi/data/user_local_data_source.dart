@@ -25,7 +25,22 @@ class UserLocalDataSource {
   }
 
   Future<void> updateUser(RegisteredUser user) async {
-    await user.save();
+    if (user.key != null) {
+      await user.save();
+      return;
+    }
+
+    final existing = _box.values.cast<RegisteredUser?>().firstWhere(
+      (u) => u?.nik == user.nik,
+      orElse: () => null,
+    );
+
+    if (existing != null) {
+      await _box.put(existing.key, user);
+      return;
+    }
+
+    await _box.add(user);
   }
 
   Future<void> deleteUser(RegisteredUser user) async {

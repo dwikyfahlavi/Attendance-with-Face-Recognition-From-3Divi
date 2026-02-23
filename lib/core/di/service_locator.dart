@@ -5,6 +5,8 @@ import '../../features/face3divi/data/face_sdk_data_source.dart';
 import '../../features/face3divi/data/face_sdk_repository.dart';
 import '../../features/face3divi/data/face_verification_service.dart';
 import '../../features/face3divi/data/settings_repository.dart';
+import '../../features/face3divi/data/remote_auth_data_source.dart';
+import '../../features/face3divi/data/remote_auth_repository.dart';
 import '../../features/face3divi/data/user_local_data_source.dart';
 import '../../features/face3divi/data/user_repository.dart';
 import '../../models/user_model.dart';
@@ -42,6 +44,8 @@ class ServiceLocator {
   late final AbsenRepository _absenRepository;
   late final AdminPinRepository _adminPinRepository;
   late final SettingsRepository _settingsRepository;
+  late final RemoteAuthDataSource _remoteAuthDataSource;
+  late final RemoteAuthRepository _remoteAuthRepository;
 
   /// Initialize the service locator - call this once during app startup
   Future<void> setup() async {
@@ -72,6 +76,14 @@ class ServiceLocator {
 
     // Initialize Settings Repository
     _settingsRepository = SettingsRepository(_settingsBox);
+
+    // Initialize Remote Auth
+    _remoteAuthDataSource = RemoteAuthDataSource();
+    _remoteAuthRepository = RemoteAuthRepository(
+      settingsRepository: _settingsRepository,
+      userRepository: _userRepository,
+      remoteAuthDataSource: _remoteAuthDataSource,
+    );
   }
 
   // Getters for services
@@ -94,6 +106,7 @@ class ServiceLocator {
   AbsenRepository get absenRepository => _absenRepository;
   AdminPinRepository get adminPinRepository => _adminPinRepository;
   SettingsRepository get settingsRepository => _settingsRepository;
+  RemoteAuthRepository get remoteAuthRepository => _remoteAuthRepository;
 }
 
 /// Convenience getter
