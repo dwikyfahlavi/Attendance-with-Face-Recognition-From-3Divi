@@ -104,6 +104,11 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
 
       if (Platform.isIOS) flipX = false;
 
+      final rearIndex = cameras.indexWhere(
+        (camera) => camera.lensDirection == CameraLensDirection.back,
+      );
+      currentCameraIndex = rearIndex >= 0 ? rearIndex : 0;
+
       // Initialize liveness
       liveness = await _faceSdkSession!.service.createAsyncProcessingBlock({
         "unit_type": "LIVENESS_ESTIMATOR",
@@ -207,14 +212,8 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
   Future<void> _initCamera(int camIndex) async {
     if (cameras.isEmpty) return;
     try {
-      // Prefer front camera
-      final frontCamera = cameras.firstWhere(
-        (camera) => camera.lensDirection == CameraLensDirection.front,
-        orElse: () => cameras[camIndex],
-      );
-
       controller = CameraController(
-        frontCamera,
+        cameras[camIndex],
         ResolutionPreset.high,
         enableAudio: false,
       );

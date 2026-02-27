@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../data/remote_auth_data_source.dart';
 import '../widgets/modern_button.dart';
 
 class AdminRemoteLoginPage extends StatefulWidget {
@@ -52,11 +53,16 @@ class _AdminRemoteLoginPageState extends State<AdminRemoteLoginPage> {
       Navigator.of(
         context,
       ).pushNamedAndRemoveUntil('/admin/dashboard', (route) => false);
-    } catch (e) {
+    } on RemoteAuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
+        SnackBar(content: Text(e.message), backgroundColor: AppColors.errorRed),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Login failed. Please try again.'),
           backgroundColor: AppColors.errorRed,
         ),
       );

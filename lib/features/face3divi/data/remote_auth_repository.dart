@@ -22,23 +22,33 @@ class RemoteAuthRepository {
     required String username,
     required String password,
   }) async {
-    final settings = await _settingsRepository.getSettings();
-    final response = await _remoteAuthDataSource.login(
-      baseUrl: settings.apiBaseUrl,
-      username: username,
-      password: password,
-    );
+    try {
+      final settings = await _settingsRepository.getSettings();
+      final response = await _remoteAuthDataSource.login(
+        baseUrl: settings.apiBaseUrl,
+        username: username,
+        password: password,
+      );
 
-    final users = _mapLoginResponseToUsers(response);
-    if (users.isEmpty) {
-      throw Exception('Invalid login response: M_Employee_Schema is empty');
+      final users = _mapLoginResponseToUsers(response);
+      if (users.isEmpty) {
+        throw const RemoteAuthException(
+          'Login succeeded, but user data was not found.',
+        );
+      }
+
+      for (final user in users) {
+        await _userRepository.addOrUpdateUser(user);
+      }
+
+      return users.first;
+    } on RemoteAuthException {
+      rethrow;
+    } catch (_) {
+      throw const RemoteAuthException(
+        'Unable to process login data. Please try again.',
+      );
     }
-
-    for (final user in users) {
-      await _userRepository.addOrUpdateUser(user);
-    }
-
-    return users.first;
   }
 
   List<RegisteredUser> _mapLoginResponseToUsers(

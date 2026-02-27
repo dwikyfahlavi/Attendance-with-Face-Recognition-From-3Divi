@@ -23,6 +23,8 @@ class _MemberTemplateCapturePageState extends State<MemberTemplateCapturePage> {
   CameraController? _controller;
   bool _isInitializing = true;
   bool _isCapturing = false;
+  List<CameraDescription> _cameras = [];
+  CameraLensDirection _currentLensDirection = CameraLensDirection.back;
 
   @override
   void initState() {
@@ -32,29 +34,8 @@ class _MemberTemplateCapturePageState extends State<MemberTemplateCapturePage> {
 
   Future<void> _initCamera() async {
     try {
-      final cameras = await availableCameras();
-      final selected = cameras.firstWhere(
-        (camera) => camera.lensDirection == CameraLensDirection.front,
-        orElse: () => cameras.first,
-      );
-
-      final controller = CameraController(
-        selected,
-        ResolutionPreset.medium,
-        enableAudio: false,
-      );
-
-      await controller.initialize();
-      await _configureDefaultZoom(controller);
-      if (!mounted) {
-        await controller.dispose();
-        return;
-      }
-
-      setState(() {
-        _controller = controller;
-        _isInitializing = false;
-      });
+      _cameras = await availableCameras();
+      await _initializeCamera(_currentLensDirection);
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -63,6 +44,65 @@ class _MemberTemplateCapturePageState extends State<MemberTemplateCapturePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Failed to initialize camera'),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+    }
+  }
+
+  Future<void> _initializeCamera(CameraLensDirection lensDirection) async {
+    final selected = _cameras.firstWhere(
+      (camera) => camera.lensDirection == lensDirection,
+      orElse: () => _cameras.first,
+    );
+
+    final previousController = _controller;
+    final controller = CameraController(
+      selected,
+      ResolutionPreset.medium,
+      enableAudio: false,
+    );
+
+    await controller.initialize();
+    await _configureDefaultZoom(controller);
+
+    if (!mounted) {
+      await controller.dispose();
+      return;
+    }
+
+    setState(() {
+      _controller = controller;
+      _currentLensDirection = selected.lensDirection;
+      _isInitializing = false;
+    });
+
+    await previousController?.dispose();
+  }
+
+  Future<void> _toggleCamera() async {
+    if (_isInitializing || _isCapturing || _cameras.isEmpty) {
+      return;
+    }
+
+    final targetLens = _currentLensDirection == CameraLensDirection.back
+        ? CameraLensDirection.front
+        : CameraLensDirection.back;
+
+    setState(() {
+      _isInitializing = true;
+    });
+
+    try {
+      await _initializeCamera(targetLens);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isInitializing = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to switch camera'),
           backgroundColor: AppColors.errorRed,
         ),
       );
@@ -237,6 +277,13 @@ class _MemberTemplateCapturePageState extends State<MemberTemplateCapturePage> {
         title: const Text('Capture Face Template'),
         elevation: 0,
         backgroundColor: AppColors.backgroundWhite,
+        actions: [
+          IconButton(
+            onPressed: _toggleCamera,
+            tooltip: 'Switch camera',
+            icon: const Icon(Icons.cameraswitch),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

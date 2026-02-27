@@ -43,6 +43,8 @@ class _AdminRegistrationPageContentState
 
   CameraController? _cameraController;
   Future<void>? _initializeCameraFuture;
+  List<CameraDescription> _cameras = [];
+  CameraLensDirection _currentLensDirection = CameraLensDirection.back;
 
   String? _selectedDepartment;
   String? _photoPath;
@@ -109,9 +111,9 @@ class _AdminRegistrationPageContentState
       }
 
       // Get available cameras
-      final cameras = await availableCameras();
+      _cameras = await availableCameras();
 
-      if (cameras.isEmpty) {
+      if (_cameras.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -123,23 +125,26 @@ class _AdminRegistrationPageContentState
         return;
       }
 
-      // Use front camera if available for face recognition
-      final camera = cameras.firstWhere(
-        (camera) => camera.lensDirection == CameraLensDirection.front,
-        orElse: () => cameras.first,
+      final selectedCamera = _cameras.firstWhere(
+        (camera) => camera.lensDirection == _currentLensDirection,
+        orElse: () => _cameras.first,
       );
 
+      final previousController = _cameraController;
+
       _cameraController = CameraController(
-        camera,
+        selectedCamera,
         ResolutionPreset.high,
         enableAudio: false,
       );
 
       await _cameraController!.initialize();
+      await previousController?.dispose();
 
       if (mounted) {
         setState(() {
           _isCameraReady = true;
+          _currentLensDirection = selectedCamera.lensDirection;
         });
       }
     } catch (e) {
@@ -152,6 +157,18 @@ class _AdminRegistrationPageContentState
         );
       }
     }
+  }
+
+  Future<void> _toggleCamera() async {
+    if (_cameras.length < 2) return;
+
+    setState(() {
+      _isCameraReady = false;
+      _currentLensDirection = _currentLensDirection == CameraLensDirection.back
+          ? CameraLensDirection.front
+          : CameraLensDirection.back;
+      _initializeCameraFuture = _initializeCamera();
+    });
   }
 
   Future<void> _capturePhoto() async {
@@ -319,6 +336,13 @@ class _AdminRegistrationPageContentState
           title: const Text('Register New Member'),
           elevation: 0,
           backgroundColor: AppColors.backgroundWhite,
+          actions: [
+            IconButton(
+              onPressed: _toggleCamera,
+              tooltip: 'Switch camera',
+              icon: const Icon(Icons.cameraswitch),
+            ),
+          ],
         ),
         body: Container(
           decoration: BoxDecoration(
