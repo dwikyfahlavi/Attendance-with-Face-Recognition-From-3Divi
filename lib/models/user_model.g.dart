@@ -30,13 +30,14 @@ class RegisteredUserAdapter extends TypeAdapter<RegisteredUser> {
       estateCode: fields[10] as String?,
       plantCode: fields[11] as String?,
       rawUserJson: fields[12] as String?,
+      templateBytes: fields[13] as Uint8List?,
     );
   }
 
   @override
   void write(BinaryWriter writer, RegisteredUser obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.nik)
       ..writeByte(1)
@@ -62,7 +63,9 @@ class RegisteredUserAdapter extends TypeAdapter<RegisteredUser> {
       ..writeByte(11)
       ..write(obj.plantCode)
       ..writeByte(12)
-      ..write(obj.rawUserJson);
+      ..write(obj.rawUserJson)
+      ..writeByte(13)
+      ..write(obj.templateBytes);
   }
 
   @override

@@ -89,14 +89,18 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
 
     for (final admin in admins) {
       try {
-        final imageBytes = admin.imageBytes;
-        if (!admin.hasTemplate || imageBytes == null) {
+        final templateSourceBytes = admin.templateBytes ?? admin.imageBytes;
+        if (!admin.hasTemplate || templateSourceBytes == null) {
           continue;
         }
-        final List<RawSample> samples = await capturer.capture(imageBytes);
+        final List<RawSample> samples = await capturer.capture(
+          templateSourceBytes,
+        );
         if (samples.isEmpty) continue;
 
-        final data = session.service.createContextFromEncodedImage(imageBytes);
+        final data = session.service.createContextFromEncodedImage(
+          templateSourceBytes,
+        );
         data["objects"].pushBack(samples[0].toContext());
 
         await session.qaa.process(data);

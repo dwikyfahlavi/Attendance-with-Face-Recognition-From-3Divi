@@ -71,31 +71,20 @@ class RemoteAuthRepository {
 
     final results = <RegisteredUser>[];
     for (final employeeData in employeeItems) {
-      final nik = (employeeData['employee_code'] ?? '').toString().trim();
-      final name = (employeeData['employee_name'] ?? '').toString().trim();
+      final apiJson = _mapEmployeeToApiJson(employeeData);
+      final nik = (apiJson['nik'] ?? '').toString().trim();
+      final name = (apiJson['nama'] ?? '').toString().trim();
       if (nik.isEmpty || name.isEmpty) {
         continue;
       }
 
       final existing = _userRepository.getUserByNik(nik);
-      final mappedUser = RegisteredUser(
-        nik: nik,
-        nama: name,
-        isAdmin: existing?.isAdmin ?? false,
-        department: _readStringIfPresent(employeeData, 'employee_profile'),
-        hasTemplate: existing?.hasTemplate ?? false,
-        imageBytes: existing?.imageBytes,
-        employeeId: _readIntIfPresent(employeeData, 'employee_id'),
-        employeeRole: _readStringIfPresent(employeeData, 'employee_job_code'),
-        companyCode: _readStringIfPresent(employeeData, 'company_code'),
-        estateCode: _readStringIfPresent(
-          employeeData,
-          'employee_gang_allotment_code',
-        ),
-        plantCode: _readStringIfPresent(employeeData, 'employee_vendor'),
-        lastAttendanceTime: existing?.lastAttendanceTime,
-        rawUserJson: jsonEncode(employeeData),
-      );
+      final mappedUser = RegisteredUser.fromApiJson(apiJson)
+        ..isAdmin = existing?.isAdmin ?? false
+        ..hasTemplate = existing?.hasTemplate ?? false
+        ..imageBytes = existing?.imageBytes
+        ..templateBytes = existing?.templateBytes
+        ..lastAttendanceTime = existing?.lastAttendanceTime;
       results.add(mappedUser);
     }
 
@@ -126,5 +115,27 @@ class RemoteAuthRepository {
       return null;
     }
     return _toNullableString(data[key]);
+  }
+
+  Map<String, dynamic> _mapEmployeeToApiJson(
+    Map<String, dynamic> employeeData,
+  ) {
+    return {
+      'nik': _readStringIfPresent(employeeData, 'employee_code') ?? '',
+      'nama': _readStringIfPresent(employeeData, 'employee_name') ?? '',
+      'isAdmin': false,
+      'department': _readStringIfPresent(employeeData, 'employee_profile'),
+      'lastAttendanceTime': null,
+      'hasTemplate': false,
+      'employeeId': _readIntIfPresent(employeeData, 'employee_id'),
+      'employeeRole': _readStringIfPresent(employeeData, 'employee_job_code'),
+      'companyCode': _readStringIfPresent(employeeData, 'company_code'),
+      'estateCode': _readStringIfPresent(
+        employeeData,
+        'employee_gang_allotment_code',
+      ),
+      'plantCode': _readStringIfPresent(employeeData, 'employee_vendor'),
+      'rawUserJson': jsonEncode(employeeData),
+    };
   }
 }

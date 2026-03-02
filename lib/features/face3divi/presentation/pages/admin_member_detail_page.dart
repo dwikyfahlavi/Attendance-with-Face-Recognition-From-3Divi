@@ -316,7 +316,9 @@ class AdminMemberDetailPage extends StatelessWidget {
   }
 
   Widget _buildTemplateInfo(RegisteredUser user) {
-    final hasTemplate = user.hasTemplate && user.imageBytes != null;
+    final hasTemplate =
+        user.hasTemplate &&
+        (user.templateBytes != null || user.imageBytes != null);
     final color = hasTemplate
         ? AppColors.successGreen
         : AppColors.warningOrange;

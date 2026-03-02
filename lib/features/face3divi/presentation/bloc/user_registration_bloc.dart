@@ -320,6 +320,7 @@ class UserRegistrationBloc
         nik: event.user.nik,
         nama: event.user.nama,
         imageBytes: _processedImageBytes!,
+        templateBytes: _processedImageBytes,
         hasTemplate: true,
         isAdmin: event.user.isAdmin,
         department: event.user.department,

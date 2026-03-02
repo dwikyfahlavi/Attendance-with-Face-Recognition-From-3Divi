@@ -165,14 +165,18 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
 
       for (final user in box.values) {
         try {
-          final imageBytes = user.imageBytes;
-          if (!user.hasTemplate || imageBytes == null) {
+          final templateSourceBytes = user.templateBytes ?? user.imageBytes;
+          if (!user.hasTemplate || templateSourceBytes == null) {
             continue;
           }
-          final List<RawSample> rss = await capturer.capture(imageBytes);
+          final List<RawSample> rss = await capturer.capture(
+            templateSourceBytes,
+          );
           if (rss.isEmpty) continue;
 
-          Context data = service.createContextFromEncodedImage(imageBytes);
+          Context data = service.createContextFromEncodedImage(
+            templateSourceBytes,
+          );
           data["objects"].pushBack(rss[0].toContext());
 
           await qaa.process(data);

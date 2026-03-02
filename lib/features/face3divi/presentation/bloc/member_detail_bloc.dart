@@ -144,6 +144,7 @@ class MemberDetailBloc extends Bloc<MemberDetailEvent, MemberDetailState> {
     try {
       emit(MemberDetailLoading(event.user));
       event.user.imageBytes = event.imageBytes;
+      event.user.templateBytes = event.imageBytes;
       event.user.hasTemplate = true;
       await _repository.updateUser(event.user);
       emit(
