@@ -89,8 +89,8 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
 
     for (final admin in admins) {
       try {
-        final templateSourceBytes = admin.templateBytes ?? admin.imageBytes;
-        if (!admin.hasTemplate || templateSourceBytes == null) {
+        final templateSourceBytes = admin.imageBytes;
+        if (templateSourceBytes == null) {
           continue;
         }
         final List<RawSample> samples = await capturer.capture(
@@ -228,7 +228,7 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
 
       if (!mounted) return;
       context.read<AdminAuthBloc>().add(
-        AuthenticateWithFaceEvent(bestMatch.user.nik),
+        AuthenticateWithFaceEvent(bestMatch.user.employeeId),
       );
     } catch (e) {
       if (!mounted) return;
@@ -339,7 +339,7 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
           }
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Welcome, ${state.user?.nama ?? 'Admin'}!'),
+              content: Text('Welcome, ${state.user?.employeeName ?? 'Admin'}!'),
               backgroundColor: AppColors.successGreen,
             ),
           );

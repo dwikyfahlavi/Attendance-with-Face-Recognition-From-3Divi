@@ -17,7 +17,7 @@ class AbsenModelAdapter extends TypeAdapter<AbsenModel> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return AbsenModel(
-      nik: fields[0] as String,
+      employeeId: fields[0] as String,
       nama: fields[1] as String,
       jamAbsen: fields[2] as DateTime,
       isLate: fields[3] as bool,
@@ -30,7 +30,7 @@ class AbsenModelAdapter extends TypeAdapter<AbsenModel> {
     writer
       ..writeByte(5)
       ..writeByte(0)
-      ..write(obj.nik)
+      ..write(obj.employeeId)
       ..writeByte(1)
       ..write(obj.nama)
       ..writeByte(2)

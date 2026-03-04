@@ -30,6 +30,8 @@ class SettingsRepository {
     String? baseProtocol,
     String? ipPort,
     String? apiPath,
+    String? employeeCode,
+    String? employeeName,
   }) async {
     try {
       final current = await getSettings();
@@ -43,6 +45,8 @@ class SettingsRepository {
         baseProtocol: baseProtocol ?? current.baseProtocol,
         ipPort: ipPort ?? current.ipPort,
         apiPath: apiPath ?? current.apiPath,
+        employeeCode: employeeCode ?? current.employeeCode,
+        employeeName: employeeName ?? current.employeeName,
       );
       await _settingsBox.put(_defaultKey, settings);
     } catch (e) {
@@ -133,6 +137,28 @@ class SettingsRepository {
       );
     } catch (e) {
       throw Exception('Failed to update API config: $e');
+    }
+  }
+
+  Future<void> setCurrentEmployee(
+    String employeeCode,
+    String employeeName,
+  ) async {
+    try {
+      final current = await getSettings();
+      await saveSettings(
+        lateHour: current.lateHour,
+        lateMinute: current.lateMinute,
+        updatedBy: current.updatedBy,
+        faceRecognitionEnabled: current.faceRecognitionEnabled,
+        baseProtocol: current.baseProtocol,
+        ipPort: current.ipPort,
+        apiPath: current.apiPath,
+        employeeCode: employeeCode,
+        employeeName: employeeName,
+      );
+    } catch (e) {
+      throw Exception('Failed to update current employee: $e');
     }
   }
 }

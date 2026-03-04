@@ -306,10 +306,23 @@ class UserRegistrationBloc
       }
 
       // Check if user already exists
-      if (_userRepository.existsByNik(event.user.nik)) {
+      if (_userRepository.existsByEmployeeId(event.user.employeeId)) {
         emit(
           UserRegistrationError(
-            'User with NIK ${event.user.nik} already exists.',
+            'User with Employee ID ${event.user.employeeId} already exists.',
+          ),
+        );
+        return;
+      }
+
+      // Check for duplicate face
+      final duplicateEmployeeId = await _checkForDuplicateFace(
+        _processedImageBytes!,
+      );
+      if (duplicateEmployeeId != null) {
+        emit(
+          UserRegistrationError(
+            'Face already registered for employee ID: $duplicateEmployeeId. Please use a different person.',
           ),
         );
         return;
@@ -317,19 +330,15 @@ class UserRegistrationBloc
 
       // Create new user
       final newUser = RegisteredUser(
-        nik: event.user.nik,
-        nama: event.user.nama,
+        employeeId: event.user.employeeId,
+        employeeName: event.user.employeeName,
         imageBytes: _processedImageBytes!,
-        templateBytes: _processedImageBytes,
-        hasTemplate: true,
         isAdmin: event.user.isAdmin,
         department: event.user.department,
-        employeeId: event.user.employeeId,
         employeeRole: event.user.employeeRole,
         companyCode: event.user.companyCode,
         estateCode: event.user.estateCode,
         plantCode: event.user.plantCode,
-        rawUserJson: event.user.rawUserJson,
       );
 
       // Save to repository (Hive)
@@ -337,7 +346,7 @@ class UserRegistrationBloc
 
       emit(
         UserRegistrationSuccess(
-          'User "${event.user.nama}" registered successfully!',
+          'User "${event.user.employeeName}" registered successfully!',
         ),
       );
 
@@ -345,6 +354,92 @@ class UserRegistrationBloc
       add(ResetRegistrationEvent());
     } catch (e) {
       emit(UserRegistrationError('Failed to register user: $e'));
+    }
+  }
+
+  Future<String?> _checkForDuplicateFace(Uint8List newImageBytes) async {
+    final session = await _faceSdkRepository.getSession();
+    final service = session.service;
+    final qaa = session.qaa;
+    final templateExtractor = session.templateExtractor;
+    final verification = session.verification;
+
+    final allUsers = _userRepository.getAllUsers();
+
+    AsyncCapturer? capturer;
+    try {
+      capturer = await service.createAsyncCapturer(
+        Config("common_capturer_blf_fda_front.xml"),
+      );
+
+      // Extract template from new image
+      final List<RawSample> newRss = await capturer.capture(newImageBytes);
+      if (newRss.isEmpty) return null; // No face detected
+
+      Context newData = service.createContextFromEncodedImage(newImageBytes);
+      newData["objects"].pushBack(newRss[0].toContext());
+
+      await qaa.process(newData);
+      await templateExtractor.process(newData);
+
+      final Context newTemplate = service.createContext(
+        newData["objects"][0]["face_template"],
+      );
+
+      // Check against existing users
+      for (final user in allUsers) {
+        if (user.imageBytes != null) {
+          final List<RawSample> existingRss = await capturer.capture(
+            user.imageBytes!,
+          );
+          if (existingRss.isEmpty) continue;
+
+          Context existingData = service.createContextFromEncodedImage(
+            user.imageBytes!,
+          );
+          existingData["objects"].pushBack(existingRss[0].toContext());
+
+          await qaa.process(existingData);
+          await templateExtractor.process(existingData);
+
+          final Context existingTemplate = service.createContext(
+            existingData["objects"][0]["face_template"],
+          );
+
+          // Compare templates
+          final compareCtx = service.createContext({
+            "template1": existingTemplate,
+            "template2": newTemplate,
+          });
+          await verification.process(compareCtx);
+
+          final score = compareCtx["result"]["score"].get_value() ?? 0.0;
+
+          existingRss[0].dispose();
+          existingData.dispose();
+          existingTemplate.dispose();
+          compareCtx.dispose();
+
+          if (score >= FaceRecognitionConfig.minMatchScore) {
+            // Duplicate found
+            newRss[0].dispose();
+            newData.dispose();
+            newTemplate.dispose();
+            return user.employeeId;
+          }
+        }
+      }
+
+      // No duplicate found
+      newRss[0].dispose();
+      newData.dispose();
+      newTemplate.dispose();
+      return null;
+    } catch (e) {
+      // If comparison fails, assume no duplicate
+      return e.toString();
+    } finally {
+      await capturer?.dispose();
     }
   }
 

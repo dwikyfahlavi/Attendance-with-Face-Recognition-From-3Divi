@@ -7,10 +7,10 @@ part 'user_model.g.dart';
 @HiveType(typeId: 0)
 class RegisteredUser extends HiveObject {
   @HiveField(0)
-  String nik;
+  String employeeId;
 
   @HiveField(1)
-  String nama;
+  String employeeName;
 
   @HiveField(2)
   Uint8List? imageBytes;
@@ -24,12 +24,6 @@ class RegisteredUser extends HiveObject {
   @HiveField(5)
   DateTime? lastAttendanceTime;
 
-  @HiveField(6, defaultValue: false)
-  bool hasTemplate;
-
-  @HiveField(7)
-  int? employeeId;
-
   @HiveField(8)
   String? employeeRole;
 
@@ -42,78 +36,76 @@ class RegisteredUser extends HiveObject {
   @HiveField(11)
   String? plantCode;
 
-  @HiveField(12)
-  String? rawUserJson;
-
-  @HiveField(13)
-  Uint8List? templateBytes;
-
   RegisteredUser({
-    required this.nik,
-    required this.nama,
+    required this.employeeId,
+    required this.employeeName,
     this.imageBytes,
     this.isAdmin = false,
     this.department,
     this.lastAttendanceTime,
-    this.hasTemplate = false,
-    this.employeeId,
     this.employeeRole,
     this.companyCode,
     this.estateCode,
     this.plantCode,
-    this.rawUserJson,
-    this.templateBytes,
   });
 
   Map<String, dynamic> toApiJson() {
     return {
-      'nik': nik,
-      'nama': nama,
+      'employeeId': employeeId,
+      'employeeName': employeeName,
       'imageBytesBase64': imageBytes == null ? null : base64Encode(imageBytes!),
-      'templateBytesBase64': templateBytes == null
-          ? null
-          : base64Encode(templateBytes!),
       'isAdmin': isAdmin,
       'department': department,
       'lastAttendanceTime': lastAttendanceTime?.toIso8601String(),
-      'hasTemplate': hasTemplate,
-      'employeeId': employeeId,
       'employeeRole': employeeRole,
       'companyCode': companyCode,
       'estateCode': estateCode,
       'plantCode': plantCode,
-      'rawUserJson': rawUserJson,
     };
   }
 
-  factory RegisteredUser.fromApiJson(Map<String, dynamic> json) {
+  factory RegisteredUser.fromApiJson(
+    Map<String, dynamic> json,
+    RegisteredUser? existing,
+  ) {
     return RegisteredUser(
-      nik: (json['nik'] ?? '').toString(),
-      nama: (json['nama'] ?? '').toString(),
-      imageBytes: _decodeBase64OrNull(json['imageBytesBase64']),
-      templateBytes: _decodeBase64OrNull(json['templateBytesBase64']),
-      isAdmin: json['isAdmin'] == true,
-      department: json['department']?.toString(),
-      lastAttendanceTime: _parseDateTimeOrNull(json['lastAttendanceTime']),
-      hasTemplate: json['hasTemplate'] == true,
-      employeeId: _parseIntOrNull(json['employeeId']),
-      employeeRole: json['employeeRole']?.toString(),
-      companyCode: json['companyCode']?.toString(),
-      estateCode: json['estateCode']?.toString(),
-      plantCode: json['plantCode']?.toString(),
-      rawUserJson: json['rawUserJson']?.toString(),
+      employeeId: (json['employeeId'] ?? existing?.employeeId ?? ''),
+      employeeName: (json['employeeName'] ?? existing?.employeeName ?? ''),
+      imageBytes:
+          _decodeBase64OrNull(json['employee_face_template']) ??
+          existing?.imageBytes,
+      isAdmin: json['isAdmin'] == true ? true : (existing?.isAdmin ?? false),
+      department: json['department']?.toString() ?? existing?.department,
+      lastAttendanceTime:
+          _parseDateTimeOrNull(json['lastAttendanceTime']) ??
+          existing?.lastAttendanceTime,
+
+      employeeRole: json['employeeRole']?.toString() ?? existing?.employeeRole,
+      companyCode: json['companyCode']?.toString() ?? existing?.companyCode,
+      estateCode: json['estateCode']?.toString() ?? existing?.estateCode,
+      plantCode: json['plantCode']?.toString() ?? existing?.plantCode,
     );
   }
 
-  static Uint8List? _decodeBase64OrNull(dynamic value) {
-    final raw = value?.toString();
+  static Uint8List? _decodeBase64OrNull(String? value) {
+    final raw = value;
     if (raw == null || raw.isEmpty) {
       return null;
     }
 
     try {
-      return base64Decode(raw);
-    } catch (_) {
+      // 1. Clean the string (remove the \x markers)
+      String cleanHex = value!.replaceAll("\\x", "");
+
+      // 2. Convert Hex to Bytes
+      Uint8List bytes = Uint8List.fromList(
+        List.generate(cleanHex.length ~/ 2, (i) {
+          return int.parse(cleanHex.substring(i * 2, i * 2 + 2), radix: 16);
+        }),
+      );
+      return bytes;
+    } catch (e) {
+      // print(e);
       return null;
     }
   }
@@ -124,18 +116,5 @@ class RegisteredUser extends HiveObject {
       return null;
     }
     return DateTime.tryParse(raw);
-  }
-
-  static int? _parseIntOrNull(dynamic value) {
-    if (value is int) {
-      return value;
-    }
-
-    final raw = value?.toString();
-    if (raw == null || raw.isEmpty) {
-      return null;
-    }
-
-    return int.tryParse(raw);
   }
 }

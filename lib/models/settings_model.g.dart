@@ -25,13 +25,15 @@ class SettingsModelAdapter extends TypeAdapter<SettingsModel> {
       baseProtocol: fields[5] as String,
       ipPort: fields[6] as String,
       apiPath: fields[7] as String,
+      employeeCode: fields[8] as String?,
+      employeeName: fields[9] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, SettingsModel obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.lateHour)
       ..writeByte(1)
@@ -47,7 +49,11 @@ class SettingsModelAdapter extends TypeAdapter<SettingsModel> {
       ..writeByte(6)
       ..write(obj.ipPort)
       ..writeByte(7)
-      ..write(obj.apiPath);
+      ..write(obj.apiPath)
+      ..writeByte(8)
+      ..write(obj.employeeCode)
+      ..writeByte(9)
+      ..write(obj.employeeName);
   }
 
   @override

@@ -244,7 +244,7 @@ class _AdminAttendancePageState extends State<AdminAttendancePage> {
           children: [
             const SizedBox(height: 4),
             Text(
-              'NIK: ${attendance.nik}',
+              'Employee ID: ${attendance.employeeId}',
               style: AppTextStyles.bodySmall.copyWith(
                 color: AppColors.textSecondary,
               ),

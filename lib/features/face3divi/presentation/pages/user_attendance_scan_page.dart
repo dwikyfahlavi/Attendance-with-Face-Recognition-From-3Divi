@@ -41,9 +41,10 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
   bool _isDisposing = false;
   bool _isSwitching = false;
   bool _isInitialized = false;
+  bool _isExiting = false;
 
   DateTime? _lastAbsenTime;
-  String? _lastAbsenNik;
+  String? _lastAbsenEmployeeId;
 
   double _qaaTotalScore = 0.0;
   int currentCameraIndex = 0;
@@ -165,8 +166,8 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
 
       for (final user in box.values) {
         try {
-          final templateSourceBytes = user.templateBytes ?? user.imageBytes;
-          if (!user.hasTemplate || templateSourceBytes == null) {
+          final templateSourceBytes = user.imageBytes;
+          if (templateSourceBytes == null) {
             continue;
           }
           final List<RawSample> rss = await capturer.capture(
@@ -191,6 +192,7 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
           rss[0].dispose();
           data.dispose();
         } catch (e) {
+          // print('yahuy : ${e.toString()}');
           // Skip users that fail processing
           continue;
         }
@@ -243,25 +245,22 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
     }
   }
 
-  Future<void> _safeDisposeCamera() async {
-    if (_isDisposing) return;
-    _isDisposing = true;
+  Future<void> _disposeControllerSafely() async {
     try {
-      await stopCameraStreamIfNeeded();
-      if (controller.value.isInitialized) {
-        await controller.dispose();
+      if (controller.value.isStreamingImages) {
+        await stopCameraStreamIfNeeded();
       }
-    } catch (e) {
-      // Ignore camera disposal errors
+      await controller.dispose();
+    } catch (_) {
+      // Ignore camera dispose race from CameraX plugin.
     }
-    _isDisposing = false;
   }
 
   Future<void> changeCamera() async {
     if (_isSwitching || _isDisposing || cameras.length < 2) return;
     _isSwitching = true;
     try {
-      await _safeDisposeCamera();
+      await _disposeControllerSafely();
       currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
       await _initCamera(currentCameraIndex);
     } catch (e) {
@@ -442,7 +441,7 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
     final now = DateTime.now();
 
     // Check cooldown
-    if (_lastAbsenNik == user.nik && _lastAbsenTime != null) {
+    if (_lastAbsenEmployeeId == user.employeeId && _lastAbsenTime != null) {
       final diff = now.difference(_lastAbsenTime!).inSeconds;
       if (diff < 10) return; // 10 second cooldown
     }
@@ -638,8 +637,8 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
               const SizedBox(height: 16),
 
               // User details
-              _detailRow('NIK', user.nik),
-              _detailRow('Name', user.nama),
+              _detailRow('Employee ID', user.employeeId),
+              _detailRow('Name', user.employeeName),
               if (user.department != null)
                 _detailRow('Department', user.department!),
               _detailRow('Time', DateFormat('HH:mm:ss').format(absen.jamAbsen)),
@@ -716,33 +715,48 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
   }
 
   Future<void> _disposeAll() async {
-    _isDisposing = true;
-
-    await _safeDisposeCamera();
+    await _disposeControllerSafely();
 
     try {
       await _videoWorker?.dispose();
-    } catch (e) {
+      _videoWorker = null;
+    } catch (_) {
       // Ignore video worker disposal errors
     }
 
     try {
       await liveness?.dispose();
-    } catch (e) {
+      liveness = null;
+    } catch (_) {
       // Ignore liveness disposal errors
     }
 
     for (var t in dbTemplates) {
       try {
         t.template.dispose();
-      } catch (e) {
+      } catch (_) {
         // Ignore template disposal errors
       }
     }
+    dbTemplates.clear();
 
     _bannerTimer?.cancel();
+  }
 
-    _isDisposing = false;
+  Future<void> _handleExit() async {
+    if (_isExiting) return;
+    _isExiting = true;
+
+    if (mounted) {
+      setState(() {
+        _isDisposing = true;
+      });
+    }
+
+    await _disposeAll();
+
+    if (!mounted) return;
+    Navigator.of(context).pop();
   }
 
   @override
@@ -770,11 +784,12 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
     if (!controller.value.isInitialized) return Container();
 
     return PopScope(
-      canPop: !_isDisposing,
+      canPop: false,
       onPopInvoked: (didPop) async {
-        if (didPop && !_isDisposing) {
-          await _disposeAll();
+        if (didPop) {
+          return;
         }
+        await _handleExit();
       },
       child: BlocConsumer<AttendanceScanBloc, AttendanceScanState>(
         listener: (context, state) {
@@ -782,12 +797,12 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
             // Play success sound
             AudioService().playSuccessSound();
             _lastAbsenTime = state.attendance.jamAbsen;
-            _lastAbsenNik = state.attendance.nik;
+            _lastAbsenEmployeeId = state.attendance.employeeId;
             // Show success dialog
             _showSuccessDialog(state.user, state.attendance);
             // Show top banner
             showTopBanner(
-              "Attendance recorded!\n${state.user.nama}\n${DateFormat('HH:mm:ss').format(state.attendance.jamAbsen)}",
+              "Attendance recorded!\n${state.user.employeeName}\n${DateFormat('HH:mm:ss').format(state.attendance.jamAbsen)}",
               color: Colors.green[700],
               seconds: 5,
             );
@@ -800,13 +815,48 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
             backgroundColor: AppColors.backgroundLight,
             body: Stack(
               children: [
-                // Camera preview
-                Center(
-                  child: Padding(
-                    key: _pictureKey,
-                    padding: const EdgeInsets.all(1.0),
-                    child: CameraPreview(controller),
-                  ),
+                // Camera preview with overlay
+                Stack(
+                  children: [
+                    Center(
+                      child: Padding(
+                        key: _pictureKey,
+                        padding: const EdgeInsets.all(1.0),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(0),
+                          child: OverflowBox(
+                            alignment: Alignment.center,
+                            child: FittedBox(
+                              fit: BoxFit.cover,
+                              child: SizedBox(
+                                width: (baseAngle == 1 || baseAngle == 2)
+                                    ? controller.value.previewSize!.height
+                                    : controller.value.previewSize!.width,
+                                height: (baseAngle == 1 || baseAngle == 2)
+                                    ? controller.value.previewSize!.width
+                                    : controller.value.previewSize!.height,
+                                child: CameraPreview(controller),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Subtle gradient overlay for better text contrast
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withOpacity(0.1),
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.3),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
 
                 // Bounding box & quality indicators
@@ -824,29 +874,43 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
                         opacity: _topBanner != null ? 1 : 0,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 16,
+                            vertical: 14,
+                            horizontal: 18,
                           ),
                           decoration: BoxDecoration(
-                            color: _topBannerColor,
-                            borderRadius: BorderRadius.circular(14),
+                            gradient: LinearGradient(
+                              colors: [
+                                _topBannerColor.withOpacity(0.95),
+                                _topBannerColor.withOpacity(0.85),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: _topBannerColor.withOpacity(0.18),
-                                blurRadius: 16,
-                                offset: const Offset(1, 5),
+                                color: _topBannerColor.withOpacity(0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 6),
                               ),
                             ],
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.2),
+                              width: 1,
+                            ),
                           ),
                           child: Row(
                             children: [
                               Icon(
                                 _topBannerColor == Colors.green[700]
                                     ? Icons.check_circle_outline
+                                    : _topBannerColor == Colors.red[600]
+                                    ? Icons.error_outline
                                     : Icons.info_outline,
                                 color: Colors.white,
+                                size: 24,
                               ),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
                                   _topBanner ?? '',
@@ -855,6 +919,7 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 0.3,
+                                    height: 1.2,
                                   ),
                                 ),
                               ),
@@ -871,76 +936,178 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
                     left: 16,
                     right: 16,
                     bottom: 38,
-                    child: Card(
-                      color: Colors.black.withOpacity(0.80),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 13,
-                          horizontal: 14,
-                        ),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child:
-                                  matchedImage ??
-                                  const SizedBox(width: 60, height: 60),
+                    child: AnimatedSlide(
+                      duration: const Duration(milliseconds: 400),
+                      offset: matchedUser != null
+                          ? Offset.zero
+                          : const Offset(0, 1),
+                      curve: Curves.easeOut,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.black.withOpacity(0.8),
+                              Colors.black.withOpacity(0.6),
+                            ],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                          ],
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                            width: 1,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: BackdropFilter(
+                            filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 16,
+                                horizontal: 18,
+                              ),
+                              child: Row(
                                 children: [
-                                  Text(
-                                    'NIK: ${matchedUser?.nik ?? ""}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Name: ${matchedUser?.nama ?? ""}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Score: ${matchedScore?.toStringAsFixed(3) ?? ""}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  Row(
-                                    children: [
-                                      const Text(
-                                        'Status: ',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 15,
-                                        ),
+                                  Container(
+                                    width: 60,
+                                    height: 60,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.white.withOpacity(0.2),
+                                        width: 2,
                                       ),
-                                      Text(
-                                        matchedIsReal == true ? "Real" : "Fake",
-                                        style: TextStyle(
-                                          color: matchedIsReal == true
-                                              ? Colors.green[400]
-                                              : Colors.red[300],
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15,
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(10),
+                                      child:
+                                          matchedImage ??
+                                          Container(
+                                            color: Colors.white.withOpacity(
+                                              0.1,
+                                            ),
+                                            child: const Icon(
+                                              Icons.person,
+                                              color: Colors.white70,
+                                              size: 30,
+                                            ),
+                                          ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          matchedUser?.employeeId ?? '',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 0.5,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          matchedUser?.employeeName ?? '',
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(
+                                              0.9,
+                                            ),
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.successGreen
+                                                    .withOpacity(0.2),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                border: Border.all(
+                                                  color: AppColors.successGreen
+                                                      .withOpacity(0.5),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                matchedScore?.toStringAsFixed(
+                                                      3,
+                                                    ) ??
+                                                    '',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    (matchedIsReal == true
+                                                            ? AppColors
+                                                                  .successGreen
+                                                            : AppColors
+                                                                  .errorRed)
+                                                        .withOpacity(0.2),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                border: Border.all(
+                                                  color:
+                                                      (matchedIsReal == true
+                                                              ? AppColors
+                                                                    .successGreen
+                                                              : AppColors
+                                                                    .errorRed)
+                                                          .withOpacity(0.5),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                matchedIsReal == true
+                                                    ? 'Real'
+                                                    : 'Fake',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -951,57 +1118,93 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
                   top: 24,
                   left: 8,
                   child: SafeArea(
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back, size: 32),
-                      color: Colors.white,
-                      onPressed: _isDisposing || _isSwitching
-                          ? null
-                          : () async {
-                              // ignore: use_build_context_synchronously
-                              if (mounted) Navigator.of(context).pop();
-                              await _disposeAll();
-                            },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back, size: 28),
+                        color: Colors.white,
+                        onPressed: _isDisposing || _isSwitching
+                            ? null
+                            : _handleExit,
+                      ),
                     ),
                   ),
                 ),
 
-                // Info about loaded users
+                // Bottom instruction bar
                 Positioned(
-                  top: 24,
+                  left: 16,
                   right: 16,
-                  child: SafeArea(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'Users: ${dbTemplates.length}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
+                  bottom: 100,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
-                      ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.face,
+                          color: Colors.white.withOpacity(0.8),
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Position your face in the center and hold still',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
             floatingActionButton: cameras.length > 1
-                ? FloatingActionButton(
-                    heroTag: "btnSwitch",
-                    tooltip: "Switch Camera",
-                    backgroundColor: AppColors.secondary,
-                    onPressed: _isDisposing || _isSwitching
-                        ? null
-                        : () async {
-                            await changeCamera();
-                          },
-                    child: const Icon(Icons.flip_camera_android),
+                ? Container(
+                    margin: const EdgeInsets.only(bottom: 20),
+                    child: FloatingActionButton(
+                      heroTag: "btnSwitch",
+                      tooltip: "Switch Camera",
+                      backgroundColor: Colors.white.withOpacity(0.9),
+                      foregroundColor: AppColors.primaryPurple,
+                      elevation: 8,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      onPressed: _isDisposing || _isSwitching
+                          ? null
+                          : () async {
+                              await changeCamera();
+                            },
+                      child: const Icon(Icons.flip_camera_android, size: 24),
+                    ),
                   )
                 : null,
             floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -1014,12 +1217,7 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
   @override
   void dispose() {
     _bannerTimer?.cancel();
-    _isDisposing = true;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _disposeAll();
-    });
-
+    unawaited(_disposeAll());
     super.dispose();
   }
 }

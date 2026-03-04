@@ -5,7 +5,7 @@ part 'absen_model.g.dart';
 @HiveType(typeId: 2)
 class AbsenModel extends HiveObject {
   @HiveField(0)
-  String nik;
+  String employeeId;
 
   @HiveField(1)
   String nama;
@@ -20,7 +20,7 @@ class AbsenModel extends HiveObject {
   String status; // 'OnTime', 'Late', 'Absent'
 
   AbsenModel({
-    required this.nik,
+    required this.employeeId,
     required this.nama,
     required this.jamAbsen,
     this.isLate = false,
@@ -29,6 +29,6 @@ class AbsenModel extends HiveObject {
 
   @override
   toString() {
-    return 'AbsenModel(nik: $nik, nama: $nama, jamAbsen: $jamAbsen, isLate: $isLate, status: $status)';
+    return 'AbsenModel(employeeId: $employeeId, nama: $nama, jamAbsen: $jamAbsen, isLate: $isLate, status: $status)';
   }
 }

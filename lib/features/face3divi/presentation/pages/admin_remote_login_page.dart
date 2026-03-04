@@ -43,9 +43,7 @@ class _AdminRemoteLoginPageState extends State<AdminRemoteLoginPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Login success. User ${user.nama} stored to local data.',
-          ),
+          content: Text('Login success. Welcome, $user!'),
           backgroundColor: AppColors.successGreen,
         ),
       );

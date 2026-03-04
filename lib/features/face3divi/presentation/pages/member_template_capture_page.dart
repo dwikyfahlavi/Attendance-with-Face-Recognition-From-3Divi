@@ -23,6 +23,7 @@ class _MemberTemplateCapturePageState extends State<MemberTemplateCapturePage> {
   CameraController? _controller;
   bool _isInitializing = true;
   bool _isCapturing = false;
+  bool _isSwitching = false;
   List<CameraDescription> _cameras = [];
   CameraLensDirection _currentLensDirection = CameraLensDirection.back;
 
@@ -56,15 +57,24 @@ class _MemberTemplateCapturePageState extends State<MemberTemplateCapturePage> {
       orElse: () => _cameras.first,
     );
 
-    final previousController = _controller;
     final controller = CameraController(
       selected,
       ResolutionPreset.medium,
       enableAudio: false,
     );
 
-    await controller.initialize();
-    await _configureDefaultZoom(controller);
+    try {
+      await controller.initialize();
+    } catch (e) {
+      await controller.dispose();
+      throw Exception(
+        'Failed to initialize ${selected.lensDirection == CameraLensDirection.front ? 'front' : 'back'} camera: $e',
+      );
+    }
+
+    if (selected.lensDirection != CameraLensDirection.front) {
+      await _configureDefaultZoom(controller);
+    }
 
     if (!mounted) {
       await controller.dispose();
@@ -76,12 +86,10 @@ class _MemberTemplateCapturePageState extends State<MemberTemplateCapturePage> {
       _currentLensDirection = selected.lensDirection;
       _isInitializing = false;
     });
-
-    await previousController?.dispose();
   }
 
   Future<void> _toggleCamera() async {
-    if (_isInitializing || _isCapturing || _cameras.isEmpty) {
+    if (_isInitializing || _isCapturing || _isSwitching || _cameras.isEmpty) {
       return;
     }
 
@@ -89,23 +97,60 @@ class _MemberTemplateCapturePageState extends State<MemberTemplateCapturePage> {
         ? CameraLensDirection.front
         : CameraLensDirection.back;
 
+    final hasTargetCamera = _cameras.any(
+      (camera) => camera.lensDirection == targetLens,
+    );
+    if (!hasTargetCamera) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${targetLens == CameraLensDirection.front ? 'Front' : 'Back'} camera not available',
+          ),
+          backgroundColor: AppColors.warningOrange,
+        ),
+      );
+      return;
+    }
+
+    _isSwitching = true;
     setState(() {
       _isInitializing = true;
     });
 
     try {
+      await _disposeControllerSafely();
+      await Future<void>.delayed(const Duration(milliseconds: 120));
       await _initializeCamera(targetLens);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _isInitializing = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to switch camera'),
+        SnackBar(
+          content: Text('Failed to switch camera: ${e.toString()}'),
           backgroundColor: AppColors.errorRed,
         ),
       );
+    } finally {
+      _isSwitching = false;
+    }
+  }
+
+  Future<void> _disposeControllerSafely({bool updateUi = true}) async {
+    final controller = _controller;
+    _controller = null;
+
+    if (updateUi && mounted) {
+      setState(() {});
+    }
+
+    if (controller == null) return;
+
+    try {
+      await controller.dispose();
+    } catch (_) {
+      // Ignore camera dispose race from CameraX plugin.
     }
   }
 
@@ -266,7 +311,7 @@ class _MemberTemplateCapturePageState extends State<MemberTemplateCapturePage> {
 
   @override
   void dispose() {
-    _controller?.dispose();
+    _disposeControllerSafely(updateUi: false);
     super.dispose();
   }
 

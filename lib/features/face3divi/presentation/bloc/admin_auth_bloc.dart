@@ -12,8 +12,8 @@ class AuthenticateWithPINEvent extends AdminAuthEvent {
 }
 
 class AuthenticateWithFaceEvent extends AdminAuthEvent {
-  final String userNik;
-  AuthenticateWithFaceEvent(this.userNik);
+  final String userEmployeeId;
+  AuthenticateWithFaceEvent(this.userEmployeeId);
 }
 
 class LogoutAdminEvent extends AdminAuthEvent {}
@@ -85,7 +85,7 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
       emit(const AdminAuthLoading());
 
       // Verify user exists and has admin role
-      final user = _userRepository.getUserByNik(event.userNik);
+      final user = _userRepository.getUserByEmployeeId(event.userEmployeeId);
 
       if (user == null) {
         emit(const AdminAuthFailed('User not found'));

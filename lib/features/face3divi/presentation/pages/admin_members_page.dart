@@ -59,7 +59,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Search by name or NIK',
+                    hintText: 'Search by name or Employee ID',
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
@@ -116,10 +116,12 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
                         : users
                               .where(
                                 (user) =>
-                                    user.nama.toLowerCase().contains(
+                                    user.employeeName.toLowerCase().contains(
                                       _searchController.text.toLowerCase(),
                                     ) ||
-                                    user.nik.contains(_searchController.text),
+                                    user.employeeId.contains(
+                                      _searchController.text,
+                                    ),
                               )
                               .toList();
 
@@ -181,13 +183,13 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
           ),
           child: Icon(Icons.person, color: AppColors.secondary),
         ),
-        title: Text(user.nama, style: AppTextStyles.titleSmall),
+        title: Text(user.employeeName, style: AppTextStyles.titleSmall),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
             Text(
-              'NIK: ${user.nik}',
+              'Employee ID: ${user.employeeId}',
               style: AppTextStyles.bodySmall.copyWith(
                 color: AppColors.textSecondary,
               ),

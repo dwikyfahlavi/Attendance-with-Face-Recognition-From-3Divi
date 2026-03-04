@@ -18,27 +18,27 @@ class RecordAttendanceEvent extends AttendanceScanEvent {
 }
 
 class MarkAttendanceEvent extends AttendanceScanEvent {
-  final String userNik;
+  final String userEmployeeId;
   final String userName;
   final Uint8List? capturedImageBytes;
 
   MarkAttendanceEvent({
-    required this.userNik,
+    required this.userEmployeeId,
     required this.userName,
     this.capturedImageBytes,
   });
 }
 
 class VerifyFaceEvent extends AttendanceScanEvent {
-  final String userNik;
+  final String userEmployeeId;
   final Uint8List imageBytes;
 
-  VerifyFaceEvent({required this.userNik, required this.imageBytes});
+  VerifyFaceEvent({required this.userEmployeeId, required this.imageBytes});
 }
 
 class CheckCooldownEvent extends AttendanceScanEvent {
-  final String userNik;
-  CheckCooldownEvent(this.userNik);
+  final String userEmployeeId;
+  CheckCooldownEvent(this.userEmployeeId);
 }
 
 class ResetScanEvent extends AttendanceScanEvent {}
@@ -127,7 +127,7 @@ class AttendanceScanBloc
 
       // Check if user has marked attendance recently
       final lastAttendance = await _absenRepository.getLastAttendanceForUser(
-        user.nik,
+        user.employeeId,
       );
 
       if (lastAttendance != null) {
@@ -145,8 +145,8 @@ class AttendanceScanBloc
 
       // Create attendance record
       final absen = AbsenModel(
-        nik: user.nik,
-        nama: user.nama,
+        employeeId: user.employeeId,
+        nama: user.employeeName,
         jamAbsen: now,
         isLate: isLate,
         status: isLate ? 'Late' : 'OnTime',
@@ -178,7 +178,7 @@ class AttendanceScanBloc
       if (_faceVerificationService != null &&
           event.capturedImageBytes != null) {
         // Verify face before marking attendance
-        final user = _userRepository.getUserByNik(event.userNik);
+        final user = _userRepository.getUserByEmployeeId(event.userEmployeeId);
         if (user == null) {
           emit(const AttendanceScanError('User not found'));
           return;
@@ -200,7 +200,7 @@ class AttendanceScanBloc
 
       // Check if user has marked attendance recently
       final lastAttendance = await _absenRepository.getLastAttendanceForUser(
-        event.userNik,
+        event.userEmployeeId,
       );
 
       if (lastAttendance != null) {
@@ -217,7 +217,7 @@ class AttendanceScanBloc
 
       // Mark new attendance
       final newAttendance = AbsenModel(
-        nik: event.userNik,
+        employeeId: event.userEmployeeId,
         nama: event.userName,
         jamAbsen: DateTime.now(),
       );
@@ -274,7 +274,7 @@ class AttendanceScanBloc
   ) async {
     try {
       final lastAttendance = await _absenRepository.getLastAttendanceForUser(
-        event.userNik,
+        event.userEmployeeId,
       );
 
       if (lastAttendance != null) {

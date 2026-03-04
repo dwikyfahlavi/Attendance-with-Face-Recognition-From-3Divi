@@ -18,6 +18,75 @@ class AdminDashboardPage extends StatelessWidget {
               backgroundColor: AppColors.errorRed,
             ),
           );
+        } else if (state is AdminDashboardUploadSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '${state.uploadedCount} templates uploaded successfully',
+              ),
+              backgroundColor: AppColors.successGreen,
+            ),
+          );
+        } else if (state is AdminDashboardUploadError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Upload failed: ${state.message}'),
+              backgroundColor: AppColors.errorRed,
+            ),
+          );
+        } else if (state is AdminDashboardUploadPartialFailure) {
+          final details = state.errorMessages.isEmpty
+              ? ''
+              : '\n\nDetails:\n- ${state.errorMessages.join('\n- ')}';
+          showDialog<void>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text('Upload Incomplete'),
+              content: Text(
+                'Something went wrong. ${state.failedCount} templates did not upload successfully. Do you want to re-upload the rest of it?$details',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('No'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    context.read<AdminDashboardBloc>().add(
+                      RetryUploadFaceTemplatesEvent(state.failedTemplates),
+                    );
+                  },
+                  child: const Text('Yes, Retry'),
+                ),
+              ],
+            ),
+          );
+        } else if (state is AdminDashboardNoTemplates) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No templates to upload'),
+              backgroundColor: AppColors.warningOrange,
+            ),
+          );
+        } else if (state is AdminDashboardAttendanceUploadSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                state.message ?? 'Today\'s attendance uploaded successfully',
+              ),
+              backgroundColor: AppColors.successGreen,
+            ),
+          );
+        } else if (state is AdminDashboardAttendanceUploadError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Upload failed: ${state.message.replaceAll('Exception: ', '')}',
+              ),
+              backgroundColor: AppColors.errorRed,
+            ),
+          );
         }
       },
       child: Scaffold(
@@ -35,7 +104,6 @@ class AdminDashboardPage extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.logout),
               onPressed: () {
-                // Logout and return to home
                 Navigator.of(
                   context,
                 ).pushNamedAndRemoveUntil('/', (route) => false);
@@ -43,95 +111,114 @@ class AdminDashboardPage extends StatelessWidget {
             ),
           ],
         ),
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [AppColors.backgroundLight, AppColors.backgroundWhite],
-            ),
-          ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: AppColors.backgroundWhite,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.borderLight),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 54,
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryPurple.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Icon(
-                          Icons.verified_user,
-                          color: AppColors.primaryPurple,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Welcome back',
-                              style: AppTextStyles.bodySmall.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Admin Dashboard',
-                              style: AppTextStyles.headlineMedium.copyWith(
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+        body: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.backgroundLight,
+                    AppColors.backgroundWhite,
+                  ],
                 ),
-                const SizedBox(height: 24),
-                Text('Quick Actions', style: AppTextStyles.titleLarge),
-                const SizedBox(height: 14),
-                _buildMenuGrid(context),
-                const SizedBox(height: 28),
-                Text('Overview', style: AppTextStyles.titleLarge),
-                const SizedBox(height: 14),
-                BlocBuilder<AdminDashboardBloc, AdminDashboardState>(
-                  builder: (context, state) {
-                    if (state is AdminDashboardLoading) {
-                      return const Center(child: CircularProgressIndicator());
-                    } else if (state is AdminDashboardLoaded) {
-                      return _buildStatsCards(
-                        totalMembers: state.totalMembers,
-                        presentToday: state.presentToday,
-                        absentToday: state.absentToday,
-                      );
-                    } else {
-                      return const SizedBox.shrink();
-                    }
-                  },
+              ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundWhite,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.borderLight),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 54,
+                            height: 54,
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryPurple.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(
+                              Icons.verified_user,
+                              color: AppColors.primaryPurple,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Welcome back',
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Admin Dashboard',
+                                  style: AppTextStyles.headlineMedium.copyWith(
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text('Quick Actions', style: AppTextStyles.titleLarge),
+                    const SizedBox(height: 14),
+                    _buildMenuGrid(context),
+                    const SizedBox(height: 28),
+                    Text('Overview', style: AppTextStyles.titleLarge),
+                    const SizedBox(height: 14),
+                    BlocBuilder<AdminDashboardBloc, AdminDashboardState>(
+                      builder: (context, state) {
+                        if (state is AdminDashboardLoaded) {
+                          return _buildStatsCards(
+                            totalMembers: state.totalMembers,
+                            presentToday: state.presentToday,
+                            absentToday: state.absentToday,
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+            BlocBuilder<AdminDashboardBloc, AdminDashboardState>(
+              builder: (context, state) {
+                if (state is AdminDashboardLoading ||
+                    state is AdminDashboardUploading ||
+                    state is AdminDashboardAttendanceUploading) {
+                  return Positioned.fill(
+                    child: Container(
+                      color: Colors.black26,
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ],
         ),
       ),
     );
   }
 
-  static Widget _buildMenuGrid(BuildContext context) {
+  Widget _buildMenuGrid(BuildContext context) {
     final menuItems = [
       _MenuItem(
         icon: Icons.person_add,
@@ -160,15 +247,24 @@ class AdminDashboardPage extends StatelessWidget {
           Navigator.of(context).pushNamed('/admin/attendance');
         },
       ),
-      // _MenuItem(
-      //   icon: Icons.login,
-      //   title: 'Login API',
-      //   subtitle: 'Sync user from server',
-      //   color: AppColors.primaryPurple,
-      //   onTap: () {
-      //     Navigator.of(context).pushNamed('/admin/login-api');
-      //   },
-      // ),
+      _MenuItem(
+        icon: Icons.cloud_upload,
+        title: 'Upload Templates',
+        subtitle: 'Sync face templates',
+        color: AppColors.primaryPurple,
+        onTap: () {
+          context.read<AdminDashboardBloc>().add(UploadFaceTemplatesEvent());
+        },
+      ),
+      _MenuItem(
+        icon: Icons.upload_file,
+        title: 'Upload Attendance',
+        subtitle: 'Upload today\'s attendance',
+        color: AppColors.successGreen,
+        onTap: () {
+          context.read<AdminDashboardBloc>().add(UploadTodaysAttendanceEvent());
+        },
+      ),
       _MenuItem(
         icon: Icons.settings,
         title: 'Settings',

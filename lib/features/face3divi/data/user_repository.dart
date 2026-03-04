@@ -10,7 +10,8 @@ class UserRepository {
 
   List<RegisteredUser> getAllUsers() => _dataSource.getAllUsers();
 
-  bool existsByNik(String nik) => _dataSource.existsByNik(nik);
+  bool existsByEmployeeId(String employeeId) =>
+      _dataSource.existsByEmployeeId(employeeId);
 
   Future<void> addUser(RegisteredUser user) => _dataSource.addUser(user);
 
@@ -20,28 +21,28 @@ class UserRepository {
 
   Future<void> deleteUser(RegisteredUser user) => _dataSource.deleteUser(user);
 
-  /// Add or update user - updates if exists by NIK, otherwise adds new user
+  /// Add or update user - updates if exists by employee ID, otherwise adds new user
   Future<void> addOrUpdateUser(RegisteredUser user) async {
-    if (existsByNik(user.nik)) {
+    if (existsByEmployeeId(user.employeeId)) {
       await updateUser(user);
     } else {
       await addUser(user);
     }
   }
 
-  /// Get user by NIK (ID)
-  RegisteredUser? getUserByNik(String nik) {
+  /// Get user by employee ID
+  RegisteredUser? getUserByEmployeeId(String employeeId) {
     final users = getAllUsers();
     try {
-      return users.firstWhere((user) => user.nik == nik);
+      return users.firstWhere((user) => user.employeeId == employeeId);
     } catch (e) {
       return null;
     }
   }
 
-  /// Get user by NIK and check if admin
-  Future<bool> isUserAdmin(String nik) async {
-    final user = getUserByNik(nik);
+  /// Get user by employee ID and check if admin
+  Future<bool> isUserAdmin(String employeeId) async {
+    final user = getUserByEmployeeId(employeeId);
     return user != null && user.isAdmin;
   }
 }

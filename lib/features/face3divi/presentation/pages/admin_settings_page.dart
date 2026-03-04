@@ -117,236 +117,237 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   Widget build(BuildContext context) {
     return BlocBuilder<SettingsBloc, SettingsState>(
       builder: (context, settingsState) {
-        // Initialize controllers with loaded settings when available
-        if (settingsState is SettingsLoaded) {
-          _lateHourController.text = settingsState.settings.lateHour
-              .toString()
-              .padLeft(2, '0');
-          _lateMinuteController.text = settingsState.settings.lateMinute
-              .toString()
-              .padLeft(2, '0');
-          _ipPortController.text = settingsState.settings.ipPort;
-        }
+        return _buildContent(settingsState);
+      },
+    );
+  }
 
-        final isFaceRecognitionEnabled = (settingsState is SettingsLoaded)
-            ? settingsState.settings.faceRecognitionEnabled
-            : true; // Default to enabled while loading
+  Widget _buildContent(SettingsState settingsState) {
+    // Initialize controllers with loaded settings when available
+    if (settingsState is SettingsLoaded) {
+      _lateHourController.text = settingsState.settings.lateHour
+          .toString()
+          .padLeft(2, '0');
+      _lateMinuteController.text = settingsState.settings.lateMinute
+          .toString()
+          .padLeft(2, '0');
+      _ipPortController.text = settingsState.settings.ipPort;
+    }
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Settings'),
-            elevation: 0,
-            backgroundColor: AppColors.backgroundWhite,
+    final isFaceRecognitionEnabled = (settingsState is SettingsLoaded)
+        ? settingsState.settings.faceRecognitionEnabled
+        : true; // Default to enabled while loading
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Settings'),
+        elevation: 0,
+        backgroundColor: AppColors.backgroundWhite,
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppColors.backgroundLight, AppColors.backgroundWhite],
           ),
-          body: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.backgroundLight, AppColors.backgroundWhite],
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Admin Settings',
+                style: AppTextStyles.headlineLarge.copyWith(
+                  color: AppColors.textPrimary,
+                ),
               ),
-            ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Admin Settings',
-                    style: AppTextStyles.headlineLarge.copyWith(
-                      color: AppColors.textPrimary,
+              const SizedBox(height: 8),
+              Text(
+                'Manage attendance rules, PIN security, and system options.',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildSettingSection(
+                title: 'API Configuration',
+                subtitle: 'Set API server IP and port for /auth/login',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('IP:Port', style: AppTextStyles.labelSmall),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _ipPortController,
+                      keyboardType: TextInputType.url,
+                      decoration: InputDecoration(
+                        hintText: '172.21.23.70:81',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Manage attendance rules, PIN security, and system options.',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+                    const SizedBox(height: 12),
+                    Text(
+                      'Base URL format: http://<IP:PORT>/api/v1_1',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildSettingSection(
-                    title: 'API Configuration',
-                    subtitle: 'Set API server IP and port for /auth/login',
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('IP:Port', style: AppTextStyles.labelSmall),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _ipPortController,
-                          keyboardType: TextInputType.url,
-                          decoration: InputDecoration(
-                            hintText: '172.21.23.70:81',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ModernButton(
+                  label: 'Save API Config',
+                  onPressed: _saveApiConfig,
+                ),
+              ),
+              const SizedBox(height: 32),
+              const Divider(thickness: 1),
+              const SizedBox(height: 32),
+              // Late hour settings
+              _buildSettingSection(
+                title: 'Late Hour Configuration',
+                subtitle:
+                    'Set the time after which attendance is marked as "Late"',
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Hour', style: AppTextStyles.labelSmall),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _lateHourController,
+                            keyboardType: TextInputType.number,
+                            maxLength: 2,
+                            decoration: InputDecoration(
+                              counterText: '',
+                              hintText: '00',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Base URL format: http://<IP:PORT>/api/v1_1',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ModernButton(
-                      label: 'Save API Config',
-                      onPressed: _saveApiConfig,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  const Divider(thickness: 1),
-                  const SizedBox(height: 32),
-                  // Late hour settings
-                  _buildSettingSection(
-                    title: 'Late Hour Configuration',
-                    subtitle:
-                        'Set the time after which attendance is marked as "Late"',
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Hour', style: AppTextStyles.labelSmall),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: _lateHourController,
-                                keyboardType: TextInputType.number,
-                                maxLength: 2,
-                                decoration: InputDecoration(
-                                  counterText: '',
-                                  hintText: '00',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Minute', style: AppTextStyles.labelSmall),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _lateMinuteController,
+                            keyboardType: TextInputType.number,
+                            maxLength: 2,
+                            decoration: InputDecoration(
+                              counterText: '',
+                              hintText: '00',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Minute', style: AppTextStyles.labelSmall),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: _lateMinuteController,
-                                keyboardType: TextInputType.number,
-                                maxLength: 2,
-                                decoration: InputDecoration(
-                                  counterText: '',
-                                  hintText: '00',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ModernButton(
-                      label: 'Save Late Hour',
-                      onPressed: _saveLateHour,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  const Divider(thickness: 1),
-                  const SizedBox(height: 32),
-                  // Change PIN section
-                  _buildSettingSection(
-                    title: 'Change Admin PIN',
-                    subtitle: 'Update your administrator access PIN',
-                    child: Column(
-                      children: [
-                        _buildPinField(
-                          label: 'Current PIN',
-                          controller: _currentPinController,
-                          isObscured: !_showCurrentPin,
-                          onToggle: () {
-                            setState(() => _showCurrentPin = !_showCurrentPin);
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        _buildPinField(
-                          label: 'New PIN',
-                          controller: _newPinController,
-                          isObscured: !_showNewPin,
-                          onToggle: () {
-                            setState(() => _showNewPin = !_showNewPin);
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        _buildPinField(
-                          label: 'Confirm PIN',
-                          controller: _confirmPinController,
-                          isObscured: !_showConfirmPin,
-                          onToggle: () {
-                            setState(() => _showConfirmPin = !_showConfirmPin);
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ModernButton(
-                      label: 'Update PIN',
-                      onPressed: _updatePin,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  const Divider(thickness: 1),
-                  const SizedBox(height: 32),
-                  // Other settings
-                  _buildSettingSection(
-                    title: 'App Settings',
-                    subtitle: 'General application settings',
-                    child: _buildSettingOption(
-                      icon: Icons.lock,
-                      title: 'Enable Face Recognition',
-                      value: isFaceRecognitionEnabled,
-                      onChanged: (value) {
-                        _saveFaceRecognitionSetting(value);
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ModernButton(
+                  label: 'Save Late Hour',
+                  onPressed: _saveLateHour,
+                ),
+              ),
+              const SizedBox(height: 32),
+              const Divider(thickness: 1),
+              const SizedBox(height: 32),
+              // Change PIN section
+              _buildSettingSection(
+                title: 'Change Admin PIN',
+                subtitle: 'Update your administrator access PIN',
+                child: Column(
+                  children: [
+                    _buildPinField(
+                      label: 'Current PIN',
+                      controller: _currentPinController,
+                      isObscured: !_showCurrentPin,
+                      onToggle: () {
+                        setState(() => _showCurrentPin = !_showCurrentPin);
                       },
                     ),
-                  ),
-                  const SizedBox(height: 32),
-                  // About section
-                  _buildSettingSection(
-                    title: 'About',
-                    subtitle: 'Application information',
-                    child: Column(
-                      children: [
-                        _buildInfoRow('App Version', 'v1.0.0'),
-                        const SizedBox(height: 12),
-                        _buildInfoRow('Build', '1'),
-                      ],
+                    const SizedBox(height: 16),
+                    _buildPinField(
+                      label: 'New PIN',
+                      controller: _newPinController,
+                      isObscured: !_showNewPin,
+                      onToggle: () {
+                        setState(() => _showNewPin = !_showNewPin);
+                      },
                     ),
-                  ),
-                  const SizedBox(height: 32),
-                ],
+                    const SizedBox(height: 16),
+                    _buildPinField(
+                      label: 'Confirm PIN',
+                      controller: _confirmPinController,
+                      isObscured: !_showConfirmPin,
+                      onToggle: () {
+                        setState(() => _showConfirmPin = !_showConfirmPin);
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ModernButton(label: 'Update PIN', onPressed: _updatePin),
+              ),
+              const SizedBox(height: 32),
+              const Divider(thickness: 1),
+              const SizedBox(height: 32),
+              // Other settings
+              _buildSettingSection(
+                title: 'App Settings',
+                subtitle: 'General application settings',
+                child: _buildSettingOption(
+                  icon: Icons.lock,
+                  title: 'Enable Face Recognition',
+                  value: isFaceRecognitionEnabled,
+                  onChanged: (value) {
+                    _saveFaceRecognitionSetting(value);
+                  },
+                ),
+              ),
+              const SizedBox(height: 32),
+              // About section
+              _buildSettingSection(
+                title: 'About',
+                subtitle: 'Application information',
+                child: Column(
+                  children: [
+                    _buildInfoRow('App Version', 'v1.0.0'),
+                    const SizedBox(height: 12),
+                    _buildInfoRow('Build', '1'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 

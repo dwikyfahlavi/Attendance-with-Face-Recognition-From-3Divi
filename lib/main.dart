@@ -160,6 +160,7 @@ class _AttendanceAppState extends State<AttendanceApp>
             create: (context) => AdminDashboardBloc(
               serviceLocator.userRepository,
               serviceLocator.absenRepository,
+              serviceLocator.remoteAuthRepository,
             )..add(LoadDashboardEvent()),
           ),
         ],
@@ -235,9 +236,10 @@ class _AttendanceAppState extends State<AttendanceApp>
         return MultiBlocProvider(
           providers: [
             BlocProvider(
-              create: (context) =>
-                  MemberDetailBloc(serviceLocator.userRepository)
-                    ..add(InitializeMemberDetail(user)),
+              create: (context) => MemberDetailBloc(
+                serviceLocator.userRepository,
+                serviceLocator.faceSdkRepository,
+              )..add(InitializeMemberDetail(user)),
             ),
           ],
           child: AdminMemberDetailPage(user: user),

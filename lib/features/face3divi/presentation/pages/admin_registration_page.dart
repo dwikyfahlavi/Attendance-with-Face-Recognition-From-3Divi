@@ -36,7 +36,7 @@ class _AdminRegistrationPageContent extends StatefulWidget {
 
 class _AdminRegistrationPageContentState
     extends State<_AdminRegistrationPageContent> {
-  final TextEditingController _nikController = TextEditingController();
+  final TextEditingController _employeeIdController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _departmentController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -45,6 +45,7 @@ class _AdminRegistrationPageContentState
   Future<void>? _initializeCameraFuture;
   List<CameraDescription> _cameras = [];
   CameraLensDirection _currentLensDirection = CameraLensDirection.back;
+  bool _isSwitching = false;
 
   String? _selectedDepartment;
   String? _photoPath;
@@ -130,8 +131,6 @@ class _AdminRegistrationPageContentState
         orElse: () => _cameras.first,
       );
 
-      final previousController = _cameraController;
-
       _cameraController = CameraController(
         selectedCamera,
         ResolutionPreset.high,
@@ -139,12 +138,11 @@ class _AdminRegistrationPageContentState
       );
 
       await _cameraController!.initialize();
-      await previousController?.dispose();
 
-      if (mounted) {
+      // Only set state if still mounted and controller is still the same
+      if (mounted && _cameraController != null) {
         setState(() {
           _isCameraReady = true;
-          _currentLensDirection = selectedCamera.lensDirection;
         });
       }
     } catch (e) {
@@ -159,16 +157,67 @@ class _AdminRegistrationPageContentState
     }
   }
 
-  Future<void> _toggleCamera() async {
-    if (_cameras.length < 2) return;
+  void _disposeControllerSafely() {
+    final controller = _cameraController;
+    _cameraController = null;
 
+    if (controller == null) return;
+
+    // Dispose asynchronously without awaiting to avoid blocking dispose
+    controller.dispose().catchError((_) {
+      // Ignore camera dispose errors during widget disposal
+    });
+  }
+
+  Future<void> _toggleCamera() async {
+    if (_isSwitching || _cameras.isEmpty) {
+      return;
+    }
+
+    final targetLens = _currentLensDirection == CameraLensDirection.back
+        ? CameraLensDirection.front
+        : CameraLensDirection.back;
+
+    final hasTargetCamera = _cameras.any(
+      (camera) => camera.lensDirection == targetLens,
+    );
+    if (!hasTargetCamera) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${targetLens == CameraLensDirection.front ? 'Front' : 'Back'} camera not available',
+          ),
+          backgroundColor: AppColors.warningOrange,
+        ),
+      );
+      return;
+    }
+
+    _isSwitching = true;
     setState(() {
       _isCameraReady = false;
-      _currentLensDirection = _currentLensDirection == CameraLensDirection.back
-          ? CameraLensDirection.front
-          : CameraLensDirection.back;
-      _initializeCameraFuture = _initializeCamera();
+      _currentLensDirection =
+          targetLens; // Update to target lens before initializing
     });
+
+    try {
+      _disposeControllerSafely();
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      await _initializeCamera();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isCameraReady = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to switch camera: ${e.toString()}'),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+    } finally {
+      _isSwitching = false;
+    }
   }
 
   Future<void> _capturePhoto() async {
@@ -209,10 +258,11 @@ class _AdminRegistrationPageContentState
 
   @override
   void dispose() {
-    _nikController.dispose();
+    _employeeIdController.dispose();
     _nameController.dispose();
     _departmentController.dispose();
-    _cameraController?.dispose();
+    // Dispose camera controller safely without awaiting
+    _disposeControllerSafely();
     super.dispose();
   }
 
@@ -241,8 +291,8 @@ class _AdminRegistrationPageContentState
     context.read<UserRegistrationBloc>().add(
       RegisterUserEvent(
         user: RegisteredUser(
-          nik: _nikController.text.trim(),
-          nama: _nameController.text.trim(),
+          employeeId: _employeeIdController.text.trim(),
+          employeeName: _nameController.text.trim(),
           department: _selectedDepartment,
           isAdmin: false,
         ),
@@ -311,7 +361,7 @@ class _AdminRegistrationPageContentState
 
           // Clear form and navigate back
           _formKey.currentState?.reset();
-          _nikController.clear();
+          _employeeIdController.clear();
           _nameController.clear();
           setState(() {
             _photoPath = null;
@@ -466,11 +516,11 @@ class _AdminRegistrationPageContentState
               Text('Member Information', style: AppTextStyles.headlineSmall),
               const SizedBox(height: 20),
 
-              // NIK field
+              // Employee ID field
               TextFormField(
-                controller: _nikController,
+                controller: _employeeIdController,
                 decoration: InputDecoration(
-                  labelText: 'NIK (Employee ID)',
+                  labelText: 'Employee ID',
                   hintText: '1234567890',
                   prefixIcon: const Icon(Icons.badge),
                   border: OutlineInputBorder(
@@ -482,9 +532,11 @@ class _AdminRegistrationPageContentState
                   ),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'NIK is required';
+                  if (value == null || value.isEmpty) {
+                    return 'Employee ID is required';
+                  }
                   if (value.length < 5) {
-                    return 'NIK must be at least 5 characters';
+                    return 'Employee ID must be at least 5 characters';
                   }
                   return null;
                 },

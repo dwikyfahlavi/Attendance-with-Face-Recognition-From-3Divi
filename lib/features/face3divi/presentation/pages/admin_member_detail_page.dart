@@ -80,7 +80,7 @@ class AdminMemberDetailPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        displayUser.nama,
+                        displayUser.employeeName,
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -118,9 +118,15 @@ class AdminMemberDetailPage extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildInfoRow('NIK', displayUser.nik),
+                            _buildInfoRow(
+                              'Employee ID',
+                              displayUser.employeeId,
+                            ),
                             const SizedBox(height: 12),
-                            _buildInfoRow('Full Name', displayUser.nama),
+                            _buildInfoRow(
+                              'Full Name',
+                              displayUser.employeeName,
+                            ),
                             if (displayUser.department != null) ...[
                               const SizedBox(height: 12),
                               _buildInfoRow(
@@ -167,7 +173,7 @@ class AdminMemberDetailPage extends StatelessWidget {
                               ? null
                               : () => _captureTemplate(context, displayUser),
                           child: Text(
-                            displayUser.hasTemplate
+                            displayUser.imageBytes != null
                                 ? 'Update Face Template'
                                 : 'Add Face Template',
                             style: const TextStyle(
@@ -316,9 +322,7 @@ class AdminMemberDetailPage extends StatelessWidget {
   }
 
   Widget _buildTemplateInfo(RegisteredUser user) {
-    final hasTemplate =
-        user.hasTemplate &&
-        (user.templateBytes != null || user.imageBytes != null);
+    final hasTemplate = user.imageBytes != null;
     final color = hasTemplate
         ? AppColors.successGreen
         : AppColors.warningOrange;
@@ -366,7 +370,7 @@ class AdminMemberDetailPage extends StatelessWidget {
 
   void _showEditDialog(BuildContext context, RegisteredUser user) {
     final bloc = context.read<MemberDetailBloc>();
-    final nameController = TextEditingController(text: user.nama);
+    final nameController = TextEditingController(text: user.employeeName);
     final departmentController = TextEditingController(
       text: user.department ?? '',
     );
@@ -482,7 +486,7 @@ class AdminMemberDetailPage extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         content: Text(
-          'Are you sure you want to delete ${user.nama}? This action cannot be undone.',
+          'Are you sure you want to delete ${user.employeeName}? This action cannot be undone.',
           style: const TextStyle(fontSize: 15, color: Colors.black87),
         ),
         actions: [

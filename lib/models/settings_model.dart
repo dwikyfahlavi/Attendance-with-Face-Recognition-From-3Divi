@@ -28,6 +28,12 @@ class SettingsModel extends HiveObject {
   @HiveField(7)
   String apiPath;
 
+  @HiveField(8)
+  String? employeeCode; // Employee code for face template uploads
+
+  @HiveField(9)
+  String? employeeName; // Employee name for display purposes
+
   SettingsModel({
     this.lateHour = 9, // Default: 9:00 AM
     this.lateMinute = 0,
@@ -37,6 +43,8 @@ class SettingsModel extends HiveObject {
     this.baseProtocol = 'http://',
     this.ipPort = '172.21.23.70:81',
     this.apiPath = '/api/v1_1',
+    this.employeeCode = '',
+    this.employeeName = '',
   });
 
   String get apiBaseUrl => '$baseProtocol$ipPort$apiPath';

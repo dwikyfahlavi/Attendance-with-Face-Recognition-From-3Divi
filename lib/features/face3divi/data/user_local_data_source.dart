@@ -14,7 +14,8 @@ class UserLocalDataSource {
 
   List<RegisteredUser> getAllUsers() => _box.values.toList();
 
-  bool existsByNik(String nik) => _box.values.any((u) => u.nik == nik);
+  bool existsByEmployeeId(String employeeId) =>
+      _box.values.any((u) => u.employeeId == employeeId);
 
   Future<void> addUser(RegisteredUser user) async {
     await _box.add(user);
@@ -31,7 +32,7 @@ class UserLocalDataSource {
     }
 
     final existing = _box.values.cast<RegisteredUser?>().firstWhere(
-      (u) => u?.nik == user.nik,
+      (u) => u?.employeeId == user.employeeId,
       orElse: () => null,
     );
 

@@ -18,7 +18,12 @@ class RemoteAuthRepository {
   final UserRepository _userRepository;
   final RemoteAuthDataSource _remoteAuthDataSource;
 
-  Future<RegisteredUser> loginAndSyncUser({
+  Future<String?> getCurrentEmployeeCode() async {
+    final settings = await _settingsRepository.getSettings();
+    return settings.employeeCode;
+  }
+
+  Future<String> loginAndSyncUser({
     required String username,
     required String password,
   }) async {
@@ -31,6 +36,15 @@ class RemoteAuthRepository {
       );
 
       final users = _mapLoginResponseToUsers(response);
+      final currentUser = _mapCurrentUser(response);
+
+      if (currentUser['employee_code'] != null &&
+          currentUser['employee_code']!.isNotEmpty) {
+        await _settingsRepository.setCurrentEmployee(
+          currentUser['employee_code'] ?? '',
+          currentUser['employee_name'] ?? '',
+        );
+      }
       if (users.isEmpty) {
         throw const RemoteAuthException(
           'Login succeeded, but user data was not found.',
@@ -41,14 +55,47 @@ class RemoteAuthRepository {
         await _userRepository.addOrUpdateUser(user);
       }
 
-      return users.first;
+      return currentUser['employee_name'] ?? '';
     } on RemoteAuthException {
       rethrow;
-    } catch (_) {
+    } catch (e) {
       throw const RemoteAuthException(
         'Unable to process login data. Please try again.',
       );
     }
+  }
+
+  Future<UploadFaceTemplatesResult> uploadFaceTemplates(
+    List<Map<String, String>> templates,
+  ) async {
+    final settings = await _settingsRepository.getSettings();
+    return _remoteAuthDataSource.uploadFaceTemplates(
+      baseUrl: settings.apiBaseUrl,
+      employeeCode: settings.employeeCode!,
+      templates: templates,
+    );
+  }
+
+  Map<String, String> _mapCurrentUser(Map<String, dynamic> responseData) {
+    final global =
+        (responseData['global'] as Map<String, dynamic>?) ?? responseData;
+    final employeeSchemaRaw =
+        (global['M_Config_Schema'] as List<dynamic>).first;
+
+    // Assuming M_Config_Schema is a JSON string, decode it
+    final Map<String, dynamic> configSchema;
+    if (employeeSchemaRaw is String) {
+      configSchema = jsonDecode(employeeSchemaRaw) as Map<String, dynamic>;
+    } else if (employeeSchemaRaw is Map<String, dynamic>) {
+      configSchema = employeeSchemaRaw;
+    } else {
+      throw const RemoteAuthException('Invalid M_Config_Schema format.');
+    }
+
+    return {
+      'employee_code': _toNullableString(configSchema['employee_code']) ?? '',
+      'employee_name': _toNullableString(configSchema['employee_name']) ?? '',
+    };
   }
 
   List<RegisteredUser> _mapLoginResponseToUsers(
@@ -58,56 +105,48 @@ class RemoteAuthRepository {
         (responseData['global'] as Map<String, dynamic>?) ?? responseData;
     final employeeSchemaRaw = global['M_Employee_Schema'];
 
+    // Assuming M_Employee_Schema is a JSON string, decode it
+    final dynamic decodedSchema;
+    if (employeeSchemaRaw is String) {
+      decodedSchema = jsonDecode(employeeSchemaRaw);
+    } else {
+      decodedSchema = employeeSchemaRaw;
+    }
+
     final employeeItems = <Map<String, dynamic>>[];
-    if (employeeSchemaRaw is List) {
-      for (final item in employeeSchemaRaw) {
+    if (decodedSchema is List) {
+      for (final item in decodedSchema) {
         if (item is Map<String, dynamic>) {
           employeeItems.add(item);
         }
       }
-    } else if (employeeSchemaRaw is Map<String, dynamic>) {
-      employeeItems.add(employeeSchemaRaw);
+    } else if (decodedSchema is Map<String, dynamic>) {
+      employeeItems.add(decodedSchema);
     }
 
     final results = <RegisteredUser>[];
     for (final employeeData in employeeItems) {
       final apiJson = _mapEmployeeToApiJson(employeeData);
-      final nik = (apiJson['nik'] ?? '').toString().trim();
-      final name = (apiJson['nama'] ?? '').toString().trim();
-      if (nik.isEmpty || name.isEmpty) {
+      final employeeId = (apiJson['employeeId'] ?? '').toString().trim();
+      final employeeName = (apiJson['employeeName'] ?? '').toString().trim();
+      if (employeeId.isEmpty || employeeName.isEmpty) {
         continue;
       }
 
-      final existing = _userRepository.getUserByNik(nik);
-      final mappedUser = RegisteredUser.fromApiJson(apiJson)
-        ..isAdmin = existing?.isAdmin ?? false
-        ..hasTemplate = existing?.hasTemplate ?? false
-        ..imageBytes = existing?.imageBytes
-        ..templateBytes = existing?.templateBytes
-        ..lastAttendanceTime = existing?.lastAttendanceTime;
+      final existing = _userRepository.getUserByEmployeeId(employeeId);
+      final mappedUser = RegisteredUser.fromApiJson(apiJson, existing);
+      // print(mappedUser.toApiJson());
+
       results.add(mappedUser);
     }
 
     return results;
   }
 
-  int? _toNullableInt(dynamic value) {
-    if (value == null) return null;
-    if (value is int) return value;
-    return int.tryParse(value.toString());
-  }
-
   String? _toNullableString(dynamic value) {
     if (value == null) return null;
     final text = value.toString().trim();
     return text.isEmpty ? null : text;
-  }
-
-  int? _readIntIfPresent(Map<String, dynamic> data, String key) {
-    if (!data.containsKey(key)) {
-      return null;
-    }
-    return _toNullableInt(data[key]);
   }
 
   String? _readStringIfPresent(Map<String, dynamic> data, String key) {
@@ -121,21 +160,56 @@ class RemoteAuthRepository {
     Map<String, dynamic> employeeData,
   ) {
     return {
-      'nik': _readStringIfPresent(employeeData, 'employee_code') ?? '',
-      'nama': _readStringIfPresent(employeeData, 'employee_name') ?? '',
+      'employeeId': _readStringIfPresent(employeeData, 'employee_id') ?? '',
+      'employeeName': _readStringIfPresent(employeeData, 'employee_name') ?? '',
       'isAdmin': false,
       'department': _readStringIfPresent(employeeData, 'employee_profile'),
       'lastAttendanceTime': null,
-      'hasTemplate': false,
-      'employeeId': _readIntIfPresent(employeeData, 'employee_id'),
       'employeeRole': _readStringIfPresent(employeeData, 'employee_job_code'),
       'companyCode': _readStringIfPresent(employeeData, 'company_code'),
       'estateCode': _readStringIfPresent(
         employeeData,
         'employee_gang_allotment_code',
       ),
+      'employee_face_template': employeeData['employee_face_template'],
       'plantCode': _readStringIfPresent(employeeData, 'employee_vendor'),
-      'rawUserJson': jsonEncode(employeeData),
     };
+  }
+
+  /// Generate mock face template data for testing bulk upload API
+  Future<List<Map<String, String>>> generateMockFaceTemplates() async {
+    // Get all registered users
+    final users = _userRepository.getAllUsers();
+
+    if (users.isEmpty) {
+      throw const RemoteAuthException(
+        'No registered users found. Please register at least one user first.',
+      );
+    }
+
+    // Get the first user and their face template
+    final firstUser = users.first;
+    if (firstUser.imageBytes == null || firstUser.imageBytes!.isEmpty) {
+      throw const RemoteAuthException(
+        'First user does not have a face template. Please register a user with face data.',
+      );
+    }
+
+    // Convert face template to base64 string
+    final base64Template = base64Encode(firstUser.imageBytes!);
+
+    // Generate 50 mock face template records
+    final mockTemplates = <Map<String, String>>[];
+
+    for (int i = 0; i < 50; i++) {
+      // Generate employee ID: EMP001, EMP002, ..., EMP050
+
+      mockTemplates.add({
+        'employee_id': users[i].employeeId,
+        'employee_face_template': base64Template,
+      });
+    }
+
+    return mockTemplates;
   }
 }
