@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 
-import '../../../models/user_model.dart';
+import '../models/user_model.dart';
 
 class UserLocalDataSource {
   UserLocalDataSource(this._box);

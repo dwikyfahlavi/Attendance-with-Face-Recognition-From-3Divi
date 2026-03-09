@@ -1,11 +1,11 @@
 import 'dart:typed_data';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fr3divi/features/face3divi/data/absen_repository.dart';
-import 'package:fr3divi/features/face3divi/data/user_repository.dart';
+import 'package:fr3divi/features/face3divi/data/repository/absen_repository.dart';
+import 'package:fr3divi/features/face3divi/data/repository/user_repository.dart';
 import 'package:fr3divi/features/face3divi/data/face_verification_service.dart';
-import 'package:fr3divi/features/face3divi/data/settings_repository.dart';
-import 'package:fr3divi/models/absen_model.dart';
-import 'package:fr3divi/models/user_model.dart';
+import 'package:fr3divi/features/face3divi/data/repository/settings_repository.dart';
+import 'package:fr3divi/features/face3divi/data/models/absen_model.dart';
+import 'package:fr3divi/features/face3divi/data/models/user_model.dart';
 
 // Events
 abstract class AttendanceScanEvent {}
@@ -64,19 +64,24 @@ class AttendanceMarking extends AttendanceScanState {
 class AttendanceScanSuccess extends AttendanceScanState {
   final RegisteredUser user;
   final AbsenModel attendance;
-  final bool isLate;
+  final String type;
 
   const AttendanceScanSuccess({
     required this.user,
     required this.attendance,
-    required this.isLate,
+    required this.type,
   });
 }
 
 class AttendanceMarked extends AttendanceScanState {
   final AbsenModel attendance;
   final bool isLate;
-  const AttendanceMarked({required this.attendance, required this.isLate});
+  final String type;
+  const AttendanceMarked({
+    required this.attendance,
+    required this.isLate,
+    required this.type,
+  });
 }
 
 class AttendanceScanError extends AttendanceScanState {
@@ -125,43 +130,55 @@ class AttendanceScanBloc
       final now = event.attendanceTime;
       final user = event.user;
 
-      // Check if user has marked attendance recently
-      final lastAttendance = await _absenRepository.getLastAttendanceForUser(
-        user.employeeId,
+      // Get settings for check-out time
+      final settings = await _settingsRepository.getSettings();
+      final checkOutTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        settings.checkOutHour,
+        settings.checkOutMinute,
       );
 
-      if (lastAttendance != null) {
-        final timeSinceLastAttendance = now.difference(lastAttendance.jamAbsen);
-        if (timeSinceLastAttendance.inSeconds < cooldownSeconds) {
-          final secondsRemaining =
-              cooldownSeconds - timeSinceLastAttendance.inSeconds;
-          emit(CooldownActive(secondsRemaining));
-          return;
-        }
+      // Determine type: CheckIn if before check-out, else CheckOut
+      final type = now.isBefore(checkOutTime) ? 'CheckIn' : 'CheckOut';
+
+      // Check for existing attendance of the same type today
+      final todaysAbsen = await _absenRepository.getTodaysAbsen();
+      final existingRecords = todaysAbsen.where(
+        (a) => a.employeeId == user.employeeId && a.type == type,
+      );
+      final existing = existingRecords.isNotEmpty
+          ? existingRecords.first
+          : null;
+
+      AbsenModel absen;
+
+      if (existing != null) {
+        // Update the existing record with new time
+        existing.jamAbsen = now;
+        existing.updatedDate = now;
+        await existing.save();
+        absen = existing;
+      } else {
+        // Create new attendance record
+        absen = AbsenModel(
+          employeeId: user.employeeId,
+          nama: user.employeeName,
+          jamAbsen: now,
+          type: type,
+          createdDate: now,
+        );
+
+        // Save attendance
+        await _absenRepository.addAttendance(absen);
       }
-
-      // Check if late
-      final isLate = await _isLateAttendance(now);
-
-      // Create attendance record
-      final absen = AbsenModel(
-        employeeId: user.employeeId,
-        nama: user.employeeName,
-        jamAbsen: now,
-        isLate: isLate,
-        status: isLate ? 'Late' : 'OnTime',
-      );
-
-      // Save attendance
-      await _absenRepository.addAttendance(absen);
 
       // Update user's lastAttendanceTime
       user.lastAttendanceTime = now;
       await _userRepository.addOrUpdateUser(user);
 
-      emit(
-        AttendanceScanSuccess(user: user, attendance: absen, isLate: isLate),
-      );
+      emit(AttendanceScanSuccess(user: user, attendance: absen, type: type));
     } catch (e) {
       emit(AttendanceScanError(e.toString()));
     }
@@ -198,21 +215,40 @@ class AttendanceScanBloc
         }
       }
 
-      // Check if user has marked attendance recently
-      final lastAttendance = await _absenRepository.getLastAttendanceForUser(
-        event.userEmployeeId,
+      // Get settings for check-out time
+      final settings = await _settingsRepository.getSettings();
+      final checkOutTime = DateTime(
+        DateTime.now().year,
+        DateTime.now().month,
+        DateTime.now().day,
+        settings.checkOutHour,
+        settings.checkOutMinute,
       );
+      final type = DateTime.now().isBefore(checkOutTime)
+          ? 'CheckIn'
+          : 'CheckOut';
 
-      if (lastAttendance != null) {
-        final timeSinceLastAttendance = DateTime.now().difference(
-          lastAttendance.jamAbsen,
-        );
-        if (timeSinceLastAttendance.inSeconds < cooldownSeconds) {
-          final secondsRemaining =
-              cooldownSeconds - timeSinceLastAttendance.inSeconds;
-          emit(CooldownActive(secondsRemaining));
-          return;
-        }
+      // Check for existing attendance of the same type today
+      final lastCheckIn = await _absenRepository
+          .getLastAttendanceForUserAndType(event.userEmployeeId, 'CheckIn');
+      final lastCheckOut = await _absenRepository
+          .getLastAttendanceForUserAndType(event.userEmployeeId, 'CheckOut');
+
+      if ((type == 'CheckIn' &&
+              lastCheckIn != null &&
+              DateTime.now().difference(lastCheckIn.jamAbsen).inSeconds <
+                  cooldownSeconds) ||
+          (type == 'CheckOut' &&
+              lastCheckOut != null &&
+              DateTime.now().difference(lastCheckOut.jamAbsen).inSeconds <
+                  cooldownSeconds)) {
+        final secondsRemaining =
+            cooldownSeconds -
+            DateTime.now()
+                .difference(lastCheckIn?.jamAbsen ?? lastCheckOut!.jamAbsen)
+                .inSeconds;
+        emit(CooldownActive(secondsRemaining));
+        return;
       }
 
       // Mark new attendance
@@ -222,13 +258,15 @@ class AttendanceScanBloc
         jamAbsen: DateTime.now(),
       );
 
-      // Check if late (compare with settings)
-      final isLate = await _isLateAttendance(newAttendance.jamAbsen);
-      newAttendance.isLate = isLate;
+      // Check if late
+      final isLate = await _isLateAttendance(newAttendance.jamAbsen, type);
+      newAttendance.type = type;
 
       await _absenRepository.addAttendance(newAttendance);
 
-      emit(AttendanceMarked(attendance: newAttendance, isLate: isLate));
+      emit(
+        AttendanceMarked(attendance: newAttendance, isLate: isLate, type: type),
+      );
     } catch (e) {
       emit(AttendanceScanError(e.toString()));
     }
@@ -302,14 +340,14 @@ class AttendanceScanBloc
     emit(const AttendanceScanInitial());
   }
 
-  Future<bool> _isLateAttendance(DateTime attendanceTime) async {
+  Future<bool> _isLateAttendance(DateTime attendanceTime, String type) async {
     try {
-      // Get late hour from settings using settings repository
-      return await _settingsRepository.isLateTime(attendanceTime);
+      return await _settingsRepository.isLateTime(attendanceTime, type);
     } catch (e) {
-      // Default to 9:00 AM if error
-      return attendanceTime.hour > 9 ||
-          (attendanceTime.hour == 9 && attendanceTime.minute > 0);
+      // Default to 9:00 AM for check-ins
+      return type == 'CheckIn' &&
+          (attendanceTime.hour > 9 ||
+              (attendanceTime.hour == 9 && attendanceTime.minute > 0));
     }
   }
 }

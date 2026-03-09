@@ -1,5 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fr3divi/features/face3divi/data/face_sdk_repository.dart';
+import 'package:fr3divi/features/face3divi/data/repository/face_sdk_repository.dart';
 import 'package:fr3divi/features/face3divi/data/face_sdk_session.dart';
 import 'package:fr3divi/features/face3divi/data/face_verification_service.dart';
 import 'package:fr3divi/core/services/logger_service.dart';

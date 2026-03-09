@@ -25,7 +25,7 @@ class _MemberTemplateCapturePageState extends State<MemberTemplateCapturePage> {
   bool _isCapturing = false;
   bool _isSwitching = false;
   List<CameraDescription> _cameras = [];
-  CameraLensDirection _currentLensDirection = CameraLensDirection.back;
+  CameraLensDirection _currentLensDirection = CameraLensDirection.front;
 
   @override
   void initState() {
@@ -93,9 +93,9 @@ class _MemberTemplateCapturePageState extends State<MemberTemplateCapturePage> {
       return;
     }
 
-    final targetLens = _currentLensDirection == CameraLensDirection.back
-        ? CameraLensDirection.front
-        : CameraLensDirection.back;
+    final targetLens = _currentLensDirection == CameraLensDirection.front
+        ? CameraLensDirection.back
+        : CameraLensDirection.front;
 
     final hasTargetCamera = _cameras.any(
       (camera) => camera.lensDirection == targetLens,

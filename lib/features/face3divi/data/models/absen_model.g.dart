@@ -20,15 +20,18 @@ class AbsenModelAdapter extends TypeAdapter<AbsenModel> {
       employeeId: fields[0] as String,
       nama: fields[1] as String,
       jamAbsen: fields[2] as DateTime,
-      isLate: fields[3] as bool,
-      status: fields[4] as String,
+      type: fields[3] == null ? 'CheckIn' : fields[3] as String,
+      serverId: fields[4] as String?,
+      isUploaded: fields[5] == null ? false : fields[5] as bool,
+      createdDate: fields[6] as DateTime?,
+      updatedDate: fields[7] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, AbsenModel obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.employeeId)
       ..writeByte(1)
@@ -36,9 +39,15 @@ class AbsenModelAdapter extends TypeAdapter<AbsenModel> {
       ..writeByte(2)
       ..write(obj.jamAbsen)
       ..writeByte(3)
-      ..write(obj.isLate)
+      ..write(obj.type)
       ..writeByte(4)
-      ..write(obj.status);
+      ..write(obj.serverId)
+      ..writeByte(5)
+      ..write(obj.isUploaded)
+      ..writeByte(6)
+      ..write(obj.createdDate)
+      ..writeByte(7)
+      ..write(obj.updatedDate);
   }
 
   @override

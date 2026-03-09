@@ -1,5 +1,5 @@
-import 'face_sdk_data_source.dart';
-import 'face_sdk_session.dart';
+import '../data_source/face_sdk_data_source.dart';
+import '../face_sdk_session.dart';
 
 class FaceSdkRepository {
   FaceSdkRepository(this._dataSource);

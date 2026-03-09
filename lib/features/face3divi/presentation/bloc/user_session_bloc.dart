@@ -1,5 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fr3divi/models/user_model.dart';
+import 'package:fr3divi/features/face3divi/data/models/user_model.dart';
 
 // Events
 abstract class UserSessionEvent {}

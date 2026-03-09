@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 
-import '../../../models/absen_model.dart';
+import '../models/absen_model.dart';
 
 class AbsenLocalDataSource {
   AbsenLocalDataSource(this._box);

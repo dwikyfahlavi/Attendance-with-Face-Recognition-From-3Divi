@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import '../../../../core/theme/app_colors.dart';
 import '../bloc/member_detail_bloc.dart';
 import 'member_template_capture_page.dart';
-import '../../../../models/user_model.dart';
+import '../../data/models/user_model.dart';
 
 class AdminMemberDetailPage extends StatelessWidget {
   final RegisteredUser user;
@@ -136,7 +136,7 @@ class AdminMemberDetailPage extends StatelessWidget {
                             ],
                             const SizedBox(height: 12),
                             _buildInfoRow(
-                              'Last Check-in',
+                              'Last Attendance',
                               displayUser.lastAttendanceTime != null
                                   ? DateFormat(
                                       'dd MMM yyyy, HH:mm',

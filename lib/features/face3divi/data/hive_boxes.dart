@@ -1,8 +1,8 @@
 import 'package:hive_flutter/hive_flutter.dart';
-import '../models/user_model.dart';
-import '../models/absen_model.dart';
-import '../models/admin_pin_model.dart';
-import '../models/settings_model.dart';
+import 'models/user_model.dart';
+import 'models/absen_model.dart';
+import 'models/admin_pin_model.dart';
+import 'models/settings_model.dart';
 
 class HiveBoxes {
   static const String userBoxName = 'users';
@@ -21,9 +21,26 @@ class HiveBoxes {
 
     // Open boxes
     await Hive.openBox<RegisteredUser>(userBoxName);
-    await Hive.openBox<AbsenModel>(absenBoxName);
+
+    // Open absen box with migration handling
+    try {
+      await Hive.openBox<AbsenModel>(absenBoxName);
+    } catch (e) {
+      // If opening fails (e.g., due to schema change), delete and reopen
+      await Hive.deleteBoxFromDisk(absenBoxName);
+      await Hive.openBox<AbsenModel>(absenBoxName);
+    }
+
     await Hive.openBox<AdminPinModel>(adminPinBoxName);
-    await Hive.openBox<SettingsModel>(settingsBoxName);
+
+    // Open settings box with migration handling
+    try {
+      await Hive.openBox<SettingsModel>(settingsBoxName);
+    } catch (e) {
+      // If opening fails (e.g., due to schema change), delete and reopen
+      await Hive.deleteBoxFromDisk(settingsBoxName);
+      await Hive.openBox<SettingsModel>(settingsBoxName);
+    }
   }
 
   static Box<RegisteredUser> get userBox =>

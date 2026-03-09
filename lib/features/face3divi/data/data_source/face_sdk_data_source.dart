@@ -1,6 +1,6 @@
 import 'package:face_sdk_3divi/face_sdk_3divi.dart';
 
-import 'face_sdk_session.dart';
+import '../face_sdk_session.dart';
 
 class FaceSdkDataSource {
   Future<FaceSdkSession> createSession() async {

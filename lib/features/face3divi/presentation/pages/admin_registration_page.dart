@@ -7,7 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/services/permission_service.dart';
 import '../../../../core/di/service_locator.dart';
-import '../../../../models/user_model.dart';
+import '../../data/models/user_model.dart';
 import '../widgets/modern_button.dart';
 import '../bloc/user_registration_bloc.dart';
 
@@ -44,7 +44,7 @@ class _AdminRegistrationPageContentState
   CameraController? _cameraController;
   Future<void>? _initializeCameraFuture;
   List<CameraDescription> _cameras = [];
-  CameraLensDirection _currentLensDirection = CameraLensDirection.back;
+  CameraLensDirection _currentLensDirection = CameraLensDirection.front;
   bool _isSwitching = false;
 
   String? _selectedDepartment;
@@ -174,9 +174,9 @@ class _AdminRegistrationPageContentState
       return;
     }
 
-    final targetLens = _currentLensDirection == CameraLensDirection.back
-        ? CameraLensDirection.front
-        : CameraLensDirection.back;
+    final targetLens = _currentLensDirection == CameraLensDirection.front
+        ? CameraLensDirection.back
+        : CameraLensDirection.front;
 
     final hasTargetCamera = _cameras.any(
       (camera) => camera.lensDirection == targetLens,

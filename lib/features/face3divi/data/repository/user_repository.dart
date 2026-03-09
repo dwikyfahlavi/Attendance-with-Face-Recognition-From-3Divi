@@ -1,5 +1,5 @@
-import '../../../models/user_model.dart';
-import 'user_local_data_source.dart';
+import '../models/user_model.dart';
+import '../data_source/user_local_data_source.dart';
 
 class UserRepository {
   UserRepository(this._dataSource);

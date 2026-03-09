@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../data/user_repository.dart';
-import '../../../../models/user_model.dart';
+import '../../data/repository/user_repository.dart';
+import '../../data/models/user_model.dart';
 
 // Events
 abstract class UserListEvent {}

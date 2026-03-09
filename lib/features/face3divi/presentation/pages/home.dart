@@ -62,16 +62,15 @@ class HomePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                ModernButton(
-                  label: 'View History',
-                  onPressed: () {
-                    Navigator.of(context).pushNamed('/attendance/history');
-                  },
-                  icon: Icons.history,
-                  width: double.infinity,
-                  isPrimary: false,
-                ),
-
+                // ModernButton(
+                //   label: 'View History',
+                //   onPressed: () {
+                //     Navigator.of(context).pushNamed('/attendance/history');
+                //   },
+                //   icon: Icons.history,
+                //   width: double.infinity,
+                //   isPrimary: false,
+                // ),
                 const Spacer(),
 
                 // Version info

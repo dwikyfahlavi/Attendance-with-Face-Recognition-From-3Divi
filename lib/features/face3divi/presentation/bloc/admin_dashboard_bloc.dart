@@ -1,9 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:convert';
-import '../../data/user_repository.dart';
-import '../../data/absen_repository.dart';
-import '../../data/remote_auth_repository.dart';
-import '../../data/remote_auth_data_source.dart';
+import '../../data/repository/user_repository.dart';
+import '../../data/repository/absen_repository.dart';
+import '../../data/repository/remote_auth_repository.dart';
+import '../../data/data_source/remote_auth_data_source.dart';
 
 // Events
 abstract class AdminDashboardEvent {}

@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_phoenix/flutter_phoenix.dart';
+import 'package:fr3divi/features/face3divi/presentation/bloc/admin_remote_login_bloc.dart';
 import 'package:fr3divi/features/face3divi/presentation/pages/user_attendance_scan_page.dart';
 
 import 'core/di/service_locator.dart';
 import 'core/presentation/bloc/app_init_bloc.dart';
 import 'core/presentation/bloc/face_sdk_bloc.dart';
 import 'core/theme/app_theme.dart';
-import 'data/hive_boxes.dart';
+import 'features/face3divi/data/hive_boxes.dart';
 import 'core/services/logger_service.dart';
 import 'features/face3divi/presentation/pages/home.dart';
 import 'features/face3divi/presentation/pages/admin_auth_page.dart';
@@ -29,7 +30,7 @@ import 'features/face3divi/presentation/bloc/attendance_list_bloc.dart';
 import 'features/face3divi/presentation/bloc/user_session_bloc.dart';
 import 'features/face3divi/presentation/bloc/settings_bloc.dart';
 import 'features/face3divi/presentation/bloc/member_detail_bloc.dart';
-import 'models/user_model.dart';
+import 'features/face3divi/data/models/user_model.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -153,19 +154,30 @@ class _AttendanceAppState extends State<AttendanceApp>
         ],
         child: const AdminAuthPage(),
       ),
-      '/admin/login-api': (context) => const AdminRemoteLoginPage(),
-      '/admin/dashboard': (context) => MultiBlocProvider(
+      '/admin/login-api': (context) => MultiBlocProvider(
         providers: [
           BlocProvider(
-            create: (context) => AdminDashboardBloc(
-              serviceLocator.userRepository,
-              serviceLocator.absenRepository,
-              serviceLocator.remoteAuthRepository,
-            )..add(LoadDashboardEvent()),
+            create: (context) =>
+                AdminRemoteLoginBloc(serviceLocator.remoteAuthRepository),
           ),
         ],
-        child: const AdminDashboardPage(),
+        child: const AdminRemoteLoginPage(),
       ),
+      '/admin/dashboard': (context) {
+        final user = ModalRoute.of(context)?.settings.arguments as String?;
+        return MultiBlocProvider(
+          providers: [
+            BlocProvider(
+              create: (context) => AdminDashboardBloc(
+                serviceLocator.userRepository,
+                serviceLocator.absenRepository,
+                serviceLocator.remoteAuthRepository,
+              )..add(LoadDashboardEvent()),
+            ),
+          ],
+          child: AdminDashboardPage(user ?? ''),
+        );
+      },
       '/admin/members': (context) => MultiBlocProvider(
         providers: [
           BlocProvider(
@@ -174,6 +186,7 @@ class _AttendanceAppState extends State<AttendanceApp>
         ],
         child: const AdminMembersPage(),
       ),
+
       '/admin/attendance': (context) => MultiBlocProvider(
         providers: [
           BlocProvider(

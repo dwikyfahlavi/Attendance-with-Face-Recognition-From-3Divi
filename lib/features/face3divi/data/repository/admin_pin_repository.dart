@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 import 'package:crypto/crypto.dart';
-import '../../../models/admin_pin_model.dart';
+import '../models/admin_pin_model.dart';
 
 class AdminPinRepository {
   final Box<AdminPinModel> _adminPinBox;

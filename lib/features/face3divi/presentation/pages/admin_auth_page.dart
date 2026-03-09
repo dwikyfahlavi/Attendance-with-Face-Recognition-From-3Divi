@@ -11,7 +11,7 @@ import '../../../../core/constants/face_recognition_config.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../data/face_sdk_session.dart';
-import '../../../../models/user_model.dart';
+import '../../data/models/user_model.dart';
 import 'package:face_sdk_3divi/face_sdk_3divi.dart';
 import '../widgets/modern_button.dart';
 
@@ -344,7 +344,10 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
             ),
           );
           // Navigate to admin dashboard
-          Navigator.of(context).pushReplacementNamed('/admin/dashboard');
+          Navigator.of(context).pushReplacementNamed(
+            '/admin/dashboard',
+            arguments: state.user?.employeeName ?? 'Admin',
+          );
         } else if (state is AdminAuthFailed) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

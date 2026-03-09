@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/user_list_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../models/user_model.dart';
+import '../../data/models/user_model.dart';
 
 class AdminMembersPage extends StatefulWidget {
   const AdminMembersPage({super.key});

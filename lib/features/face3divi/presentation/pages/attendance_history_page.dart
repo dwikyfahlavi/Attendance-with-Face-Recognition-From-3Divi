@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import '../bloc/attendance_list_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../models/absen_model.dart';
+import '../../data/models/absen_model.dart';
 
 class AttendanceHistoryPage extends StatefulWidget {
   const AttendanceHistoryPage({super.key});
@@ -208,14 +208,14 @@ class _AttendanceHistoryPageState extends State<AttendanceHistoryPage> {
     IconData statusIcon;
     String statusLabel;
 
-    if (record.isLate) {
+    if (record.type == 'CheckOut') {
       statusColor = AppColors.warningOrange;
-      statusIcon = Icons.schedule;
-      statusLabel = 'Late';
-    } else if (record.status == 'OnTime') {
+      statusIcon = Icons.logout;
+      statusLabel = 'Check-Out';
+    } else if (record.type == 'CheckIn') {
       statusColor = AppColors.successGreen;
-      statusIcon = Icons.check_circle;
-      statusLabel = 'On Time';
+      statusIcon = Icons.login;
+      statusLabel = 'Check-In';
     } else {
       statusColor = AppColors.errorRed;
       statusIcon = Icons.cancel;

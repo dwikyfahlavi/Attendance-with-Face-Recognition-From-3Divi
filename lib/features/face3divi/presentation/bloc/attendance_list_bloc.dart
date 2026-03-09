@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fr3divi/features/face3divi/data/absen_repository.dart';
-import 'package:fr3divi/models/absen_model.dart';
+import 'package:fr3divi/features/face3divi/data/repository/absen_repository.dart';
+import 'package:fr3divi/features/face3divi/data/models/absen_model.dart';
 
 // Events
 abstract class AttendanceListEvent {}
@@ -14,6 +14,8 @@ class FilterAttendanceEvent extends AttendanceListEvent {
 }
 
 class RefreshAttendanceEvent extends AttendanceListEvent {}
+
+class FetchHistoryEvent extends AttendanceListEvent {}
 
 // States
 abstract class AttendanceListState {
@@ -47,6 +49,7 @@ class AttendanceListBloc
     on<LoadAttendanceEvent>(_onLoadAttendance);
     on<FilterAttendanceEvent>(_onFilterAttendance);
     on<RefreshAttendanceEvent>(_onRefreshAttendance);
+    on<FetchHistoryEvent>(_onFetchHistory);
   }
 
   Future<void> _onLoadAttendance(
@@ -97,6 +100,23 @@ class AttendanceListBloc
     try {
       emit(const AttendanceListLoading());
       final items = await _repository.getAllAttendance();
+      emit(AttendanceListLoaded(items));
+    } catch (e) {
+      emit(AttendanceListError(e.toString()));
+    }
+  }
+
+  Future<void> _onFetchHistory(
+    FetchHistoryEvent event,
+    Emitter<AttendanceListState> emit,
+  ) async {
+    try {
+      emit(const AttendanceListLoading());
+      await _repository.clearAllAbsen();
+      final items = await _repository.fetchAttendanceHistory();
+      for (final item in items) {
+        await _repository.addAbsen(item);
+      }
       emit(AttendanceListLoaded(items));
     } catch (e) {
       emit(AttendanceListError(e.toString()));

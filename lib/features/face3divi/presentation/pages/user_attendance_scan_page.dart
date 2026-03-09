@@ -9,8 +9,8 @@ import 'package:face_sdk_3divi/utils.dart';
 import 'dart:ffi' as ffi;
 import 'package:intl/intl.dart';
 
-import '../../../../models/user_model.dart';
-import '../../../../models/absen_model.dart';
+import '../../data/models/user_model.dart';
+import '../../data/models/absen_model.dart';
 import '../../../../core/constants/face_recognition_config.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -106,7 +106,7 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
       if (Platform.isIOS) flipX = false;
 
       final rearIndex = cameras.indexWhere(
-        (camera) => camera.lensDirection == CameraLensDirection.back,
+        (camera) => camera.lensDirection == CameraLensDirection.front,
       );
       currentCameraIndex = rearIndex >= 0 ? rearIndex : 0;
 
@@ -578,7 +578,7 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
     );
   }
 
-  void _showSuccessDialog(RegisteredUser user, AbsenModel absen) {
+  void _showSuccessDialog(RegisteredUser user, AbsenModel absen, String type) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -607,7 +607,7 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
 
               // Title
               Text(
-                'Attendance Recorded!',
+                '$type Recorded!',
                 style: AppTextStyles.headlineSmall.copyWith(
                   color: AppColors.successGreen,
                 ),
@@ -648,7 +648,7 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
               ),
 
               // Late indicator
-              if (absen.isLate) ...[
+              if (absen.type == 'CheckOut') ...[
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -666,7 +666,7 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Marked as Late',
+                          'Marked as Check-Out. Please remember to check in again tomorrow!',
                           style: AppTextStyles.bodySmall.copyWith(
                             color: AppColors.warningOrange,
                             fontWeight: FontWeight.w600,
@@ -799,10 +799,10 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
             _lastAbsenTime = state.attendance.jamAbsen;
             _lastAbsenEmployeeId = state.attendance.employeeId;
             // Show success dialog
-            _showSuccessDialog(state.user, state.attendance);
+            _showSuccessDialog(state.user, state.attendance, state.type);
             // Show top banner
             showTopBanner(
-              "Attendance recorded!\n${state.user.employeeName}\n${DateFormat('HH:mm:ss').format(state.attendance.jamAbsen)}",
+              "${state.type} recorded!\n${state.user.employeeName}\n${DateFormat('HH:mm:ss').format(state.attendance.jamAbsen)}",
               color: Colors.green[700],
               seconds: 5,
             );

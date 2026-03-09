@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/di/service_locator.dart';
+// import '../../../../core/di/service_locator.dart';
 import '../bloc/settings_bloc.dart';
 import '../widgets/modern_button.dart';
 
@@ -14,22 +14,26 @@ class AdminSettingsPage extends StatefulWidget {
 }
 
 class _AdminSettingsPageState extends State<AdminSettingsPage> {
-  late TextEditingController _lateHourController;
-  late TextEditingController _lateMinuteController;
+  late TextEditingController _checkInHourController;
+  late TextEditingController _checkInMinuteController;
+  late TextEditingController _checkOutHourController;
+  late TextEditingController _checkOutMinuteController;
   late TextEditingController _ipPortController;
   late TextEditingController _currentPinController;
   late TextEditingController _newPinController;
   late TextEditingController _confirmPinController;
 
-  bool _showCurrentPin = false;
-  bool _showNewPin = false;
-  bool _showConfirmPin = false;
+  // final bool _showCurrentPin = false;
+  // final bool _showNewPin = false;
+  // final bool _showConfirmPin = false;
 
   @override
   void initState() {
     super.initState();
-    _lateHourController = TextEditingController(text: '09');
-    _lateMinuteController = TextEditingController(text: '00');
+    _checkInHourController = TextEditingController(text: '09');
+    _checkInMinuteController = TextEditingController(text: '00');
+    _checkOutHourController = TextEditingController(text: '18');
+    _checkOutMinuteController = TextEditingController(text: '00');
     _ipPortController = TextEditingController(text: '172.21.23.70:81');
     _currentPinController = TextEditingController();
     _newPinController = TextEditingController();
@@ -59,15 +63,26 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
 
   Future<void> _saveSettings() async {
     try {
-      final lateHour = int.parse(_lateHourController.text);
-      final lateMinute = int.parse(_lateMinuteController.text);
+      final checkInHour = int.parse(_checkInHourController.text);
+      final checkInMinute = int.parse(_checkInMinuteController.text);
+      final checkOutHour = int.parse(_checkOutHourController.text);
+      final checkOutMinute = int.parse(_checkOutMinuteController.text);
 
       // Validate input
-      if (lateHour < 0 || lateHour > 23 || lateMinute < 0 || lateMinute > 59) {
+      if (checkInHour < 0 ||
+          checkInHour > 23 ||
+          checkInMinute < 0 ||
+          checkInMinute > 59 ||
+          checkOutHour < 0 ||
+          checkOutHour > 23 ||
+          checkOutMinute < 0 ||
+          checkOutMinute > 59 ||
+          checkOutHour < checkInHour ||
+          (checkOutHour == checkInHour && checkOutMinute <= checkInMinute)) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Please enter valid hour (0-23) and minute (0-59)'),
+              content: Text('Invalid times: Check-out must be after check-in'),
               backgroundColor: AppColors.warningOrange,
             ),
           );
@@ -78,7 +93,12 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
       // Dispatch the update event to SettingsBloc
       if (mounted) {
         context.read<SettingsBloc>().add(
-          UpdateLateHourEvent(hour: lateHour, minute: lateMinute),
+          UpdateCheckInOutHoursEvent(
+            checkInHour: checkInHour,
+            checkInMinute: checkInMinute,
+            checkOutHour: checkOutHour,
+            checkOutMinute: checkOutMinute,
+          ),
         );
       }
 
@@ -104,8 +124,10 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
 
   @override
   void dispose() {
-    _lateHourController.dispose();
-    _lateMinuteController.dispose();
+    _checkInHourController.dispose();
+    _checkInMinuteController.dispose();
+    _checkOutHourController.dispose();
+    _checkOutMinuteController.dispose();
     _ipPortController.dispose();
     _currentPinController.dispose();
     _newPinController.dispose();
@@ -125,18 +147,24 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   Widget _buildContent(SettingsState settingsState) {
     // Initialize controllers with loaded settings when available
     if (settingsState is SettingsLoaded) {
-      _lateHourController.text = settingsState.settings.lateHour
+      _checkInHourController.text = settingsState.settings.checkInHour
           .toString()
           .padLeft(2, '0');
-      _lateMinuteController.text = settingsState.settings.lateMinute
+      _checkInMinuteController.text = settingsState.settings.checkInMinute
+          .toString()
+          .padLeft(2, '0');
+      _checkOutHourController.text = settingsState.settings.checkOutHour
+          .toString()
+          .padLeft(2, '0');
+      _checkOutMinuteController.text = settingsState.settings.checkOutMinute
           .toString()
           .padLeft(2, '0');
       _ipPortController.text = settingsState.settings.ipPort;
     }
 
-    final isFaceRecognitionEnabled = (settingsState is SettingsLoaded)
-        ? settingsState.settings.faceRecognitionEnabled
-        : true; // Default to enabled while loading
+    // final isFaceRecognitionEnabled = (settingsState is SettingsLoaded)
+    //     ? settingsState.settings.faceRecognitionEnabled
+    //     : true; // Default to enabled while loading
 
     return Scaffold(
       appBar: AppBar(
@@ -210,55 +238,118 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
               const SizedBox(height: 32),
               const Divider(thickness: 1),
               const SizedBox(height: 32),
-              // Late hour settings
+              // Check-in/out hour settings
               _buildSettingSection(
-                title: 'Late Hour Configuration',
-                subtitle:
-                    'Set the time after which attendance is marked as "Late"',
-                child: Row(
+                title: 'Check-In/Out Hour Configuration',
+                subtitle: 'Set check-in and check-out times for attendance',
+                child: Column(
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Hour', style: AppTextStyles.labelSmall),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _lateHourController,
-                            keyboardType: TextInputType.number,
-                            maxLength: 2,
-                            decoration: InputDecoration(
-                              counterText: '',
-                              hintText: '00',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Check-In Hour',
+                                style: AppTextStyles.labelSmall,
                               ),
-                            ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _checkInHourController,
+                                keyboardType: TextInputType.number,
+                                maxLength: 2,
+                                decoration: InputDecoration(
+                                  counterText: '',
+                                  hintText: '09',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Check-In Minute',
+                                style: AppTextStyles.labelSmall,
+                              ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _checkInMinuteController,
+                                keyboardType: TextInputType.number,
+                                maxLength: 2,
+                                decoration: InputDecoration(
+                                  counterText: '',
+                                  hintText: '00',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Minute', style: AppTextStyles.labelSmall),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _lateMinuteController,
-                            keyboardType: TextInputType.number,
-                            maxLength: 2,
-                            decoration: InputDecoration(
-                              counterText: '',
-                              hintText: '00',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Check-Out Hour',
+                                style: AppTextStyles.labelSmall,
                               ),
-                            ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _checkOutHourController,
+                                keyboardType: TextInputType.number,
+                                maxLength: 2,
+                                decoration: InputDecoration(
+                                  counterText: '',
+                                  hintText: '18',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Check-Out Minute',
+                                style: AppTextStyles.labelSmall,
+                              ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _checkOutMinuteController,
+                                keyboardType: TextInputType.number,
+                                maxLength: 2,
+                                decoration: InputDecoration(
+                                  counterText: '',
+                                  hintText: '00',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -267,70 +358,70 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
               SizedBox(
                 width: double.infinity,
                 child: ModernButton(
-                  label: 'Save Late Hour',
-                  onPressed: _saveLateHour,
+                  label: 'Save Check-In/Out Hours',
+                  onPressed: _saveSettings,
                 ),
               ),
               const SizedBox(height: 32),
               const Divider(thickness: 1),
               const SizedBox(height: 32),
-              // Change PIN section
-              _buildSettingSection(
-                title: 'Change Admin PIN',
-                subtitle: 'Update your administrator access PIN',
-                child: Column(
-                  children: [
-                    _buildPinField(
-                      label: 'Current PIN',
-                      controller: _currentPinController,
-                      isObscured: !_showCurrentPin,
-                      onToggle: () {
-                        setState(() => _showCurrentPin = !_showCurrentPin);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _buildPinField(
-                      label: 'New PIN',
-                      controller: _newPinController,
-                      isObscured: !_showNewPin,
-                      onToggle: () {
-                        setState(() => _showNewPin = !_showNewPin);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _buildPinField(
-                      label: 'Confirm PIN',
-                      controller: _confirmPinController,
-                      isObscured: !_showConfirmPin,
-                      onToggle: () {
-                        setState(() => _showConfirmPin = !_showConfirmPin);
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ModernButton(label: 'Update PIN', onPressed: _updatePin),
-              ),
-              const SizedBox(height: 32),
-              const Divider(thickness: 1),
-              const SizedBox(height: 32),
-              // Other settings
-              _buildSettingSection(
-                title: 'App Settings',
-                subtitle: 'General application settings',
-                child: _buildSettingOption(
-                  icon: Icons.lock,
-                  title: 'Enable Face Recognition',
-                  value: isFaceRecognitionEnabled,
-                  onChanged: (value) {
-                    _saveFaceRecognitionSetting(value);
-                  },
-                ),
-              ),
-              const SizedBox(height: 32),
+              // // Change PIN section
+              // _buildSettingSection(
+              //   title: 'Change Admin PIN',
+              //   subtitle: 'Update your administrator access PIN',
+              //   child: Column(
+              //     children: [
+              //       _buildPinField(
+              //         label: 'Current PIN',
+              //         controller: _currentPinController,
+              //         isObscured: !_showCurrentPin,
+              //         onToggle: () {
+              //           setState(() => _showCurrentPin = !_showCurrentPin);
+              //         },
+              //       ),
+              //       const SizedBox(height: 16),
+              //       _buildPinField(
+              //         label: 'New PIN',
+              //         controller: _newPinController,
+              //         isObscured: !_showNewPin,
+              //         onToggle: () {
+              //           setState(() => _showNewPin = !_showNewPin);
+              //         },
+              //       ),
+              //       const SizedBox(height: 16),
+              //       _buildPinField(
+              //         label: 'Confirm PIN',
+              //         controller: _confirmPinController,
+              //         isObscured: !_showConfirmPin,
+              //         onToggle: () {
+              //           setState(() => _showConfirmPin = !_showConfirmPin);
+              //         },
+              //       ),
+              //     ],
+              //   ),
+              // ),
+              // const SizedBox(height: 24),
+              // SizedBox(
+              //   width: double.infinity,
+              //   child: ModernButton(label: 'Update PIN', onPressed: _updatePin),
+              // ),
+              // const SizedBox(height: 32),
+              // const Divider(thickness: 1),
+              // const SizedBox(height: 32),
+              // // Other settings
+              // _buildSettingSection(
+              //   title: 'App Settings',
+              //   subtitle: 'General application settings',
+              //   child: _buildSettingOption(
+              //     icon: Icons.lock,
+              //     title: 'Enable Face Recognition',
+              //     value: isFaceRecognitionEnabled,
+              //     onChanged: (value) {
+              //       _saveFaceRecognitionSetting(value);
+              //     },
+              //   ),
+              // ),
+              // const SizedBox(height: 32),
               // About section
               _buildSettingSection(
                 title: 'About',
@@ -387,58 +478,58 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
     );
   }
 
-  Widget _buildPinField({
-    required String label,
-    required TextEditingController controller,
-    required bool isObscured,
-    required VoidCallback onToggle,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: AppTextStyles.labelSmall),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          maxLength: 6,
-          keyboardType: TextInputType.number,
-          obscureText: isObscured,
-          decoration: InputDecoration(
-            counterText: '',
-            hintText: '••••••',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-            suffix: IconButton(
-              icon: Icon(
-                isObscured ? Icons.visibility_off : Icons.visibility,
-                size: 20,
-              ),
-              onPressed: onToggle,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  // Widget _buildPinField({
+  //   required String label,
+  //   required TextEditingController controller,
+  //   required bool isObscured,
+  //   required VoidCallback onToggle,
+  // }) {
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.start,
+  //     children: [
+  //       Text(label, style: AppTextStyles.labelSmall),
+  //       const SizedBox(height: 8),
+  //       TextFormField(
+  //         controller: controller,
+  //         maxLength: 6,
+  //         keyboardType: TextInputType.number,
+  //         obscureText: isObscured,
+  //         decoration: InputDecoration(
+  //           counterText: '',
+  //           hintText: '••••••',
+  //           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+  //           suffix: IconButton(
+  //             icon: Icon(
+  //               isObscured ? Icons.visibility_off : Icons.visibility,
+  //               size: 20,
+  //             ),
+  //             onPressed: onToggle,
+  //           ),
+  //         ),
+  //       ),
+  //     ],
+  //   );
+  // }
 
-  Widget _buildSettingOption({
-    required IconData icon,
-    required String title,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, color: AppColors.primaryPurple),
-        const SizedBox(width: 16),
-        Expanded(child: Text(title, style: AppTextStyles.bodyMedium)),
-        Switch(
-          value: value,
-          onChanged: onChanged,
-          activeThumbColor: AppColors.primaryPurple,
-        ),
-      ],
-    );
-  }
+  // Widget _buildSettingOption({
+  //   required IconData icon,
+  //   required String title,
+  //   required bool value,
+  //   required ValueChanged<bool> onChanged,
+  // }) {
+  //   return Row(
+  //     children: [
+  //       Icon(icon, color: AppColors.primaryPurple),
+  //       const SizedBox(width: 16),
+  //       Expanded(child: Text(title, style: AppTextStyles.bodyMedium)),
+  //       Switch(
+  //         value: value,
+  //         onChanged: onChanged,
+  //         activeThumbColor: AppColors.primaryPurple,
+  //       ),
+  //     ],
+  //   );
+  // }
 
   Widget _buildInfoRow(String label, String value) {
     return Row(
@@ -458,91 +549,87 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
     );
   }
 
-  void _saveLateHour() {
-    _saveSettings();
-  }
+  // void _updatePin() {
+  //   if (_currentPinController.text.isEmpty ||
+  //       _newPinController.text.isEmpty ||
+  //       _confirmPinController.text.isEmpty) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(
+  //         content: Text('Please fill all PIN fields'),
+  //         backgroundColor: AppColors.errorRed,
+  //       ),
+  //     );
+  //     return;
+  //   }
 
-  void _updatePin() {
-    if (_currentPinController.text.isEmpty ||
-        _newPinController.text.isEmpty ||
-        _confirmPinController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill all PIN fields'),
-          backgroundColor: AppColors.errorRed,
-        ),
-      );
-      return;
-    }
+  //   if (_newPinController.text != _confirmPinController.text) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(
+  //         content: Text('New PIN and confirmation do not match'),
+  //         backgroundColor: AppColors.errorRed,
+  //       ),
+  //     );
+  //     return;
+  //   }
 
-    if (_newPinController.text != _confirmPinController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('New PIN and confirmation do not match'),
-          backgroundColor: AppColors.errorRed,
-        ),
-      );
-      return;
-    }
+  //   if (_newPinController.text.length != 6) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(
+  //         content: Text('PIN must be 6 digits'),
+  //         backgroundColor: AppColors.errorRed,
+  //       ),
+  //     );
+  //     return;
+  //   }
 
-    if (_newPinController.text.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('PIN must be 6 digits'),
-          backgroundColor: AppColors.errorRed,
-        ),
-      );
-      return;
-    }
+  //   // Verify and update PIN
+  //   _verifyAndUpdatePin();
+  // }
 
-    // Verify and update PIN
-    _verifyAndUpdatePin();
-  }
+  // Future<void> _verifyAndUpdatePin() async {
+  //   try {
+  //     await serviceLocator.adminPinRepository.updatePIN(
+  //       currentPin: _currentPinController.text,
+  //       newPin: _newPinController.text,
+  //       updatedBy: 'Admin',
+  //     );
 
-  Future<void> _verifyAndUpdatePin() async {
-    try {
-      await serviceLocator.adminPinRepository.updatePIN(
-        currentPin: _currentPinController.text,
-        newPin: _newPinController.text,
-        updatedBy: 'Admin',
-      );
+  //     _currentPinController.clear();
+  //     _newPinController.clear();
+  //     _confirmPinController.clear();
 
-      _currentPinController.clear();
-      _newPinController.clear();
-      _confirmPinController.clear();
+  //     if (mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         const SnackBar(
+  //           content: Text('PIN updated successfully'),
+  //           backgroundColor: AppColors.successGreen,
+  //         ),
+  //       );
+  //     }
+  //   } on Exception catch (e) {
+  //     if (mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //           content: Text(e.toString().replaceFirst('Exception: ', '')),
+  //           backgroundColor: AppColors.errorRed,
+  //         ),
+  //       );
+  //     }
+  //   }
+  // }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('PIN updated successfully'),
-            backgroundColor: AppColors.successGreen,
-          ),
-        );
-      }
-    } on Exception catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
-            backgroundColor: AppColors.errorRed,
-          ),
-        );
-      }
-    }
-  }
+  // void _saveFaceRecognitionSetting(bool value) {
+  //   // Dispatch the update event to SettingsBloc
+  //   context.read<SettingsBloc>().add(UpdateFaceRecognitionEvent(value));
 
-  void _saveFaceRecognitionSetting(bool value) {
-    // Dispatch the update event to SettingsBloc
-    context.read<SettingsBloc>().add(UpdateFaceRecognitionEvent(value));
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Face Recognition ${value ? 'enabled' : 'disabled'}'),
-        backgroundColor: AppColors.successGreen,
-        duration: const Duration(seconds: 1),
-      ),
-    );
-  }
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //     SnackBar(
+  //       content: Text('Face Recognition ${value ? 'enabled' : 'disabled'}'),
+  //       backgroundColor: AppColors.successGreen,
+  //       duration: const Duration(seconds: 1),
+  //     ),
+  //   );
+  // }
 }
 
 const Color kErrorColor = Color(0xFFEF4444);

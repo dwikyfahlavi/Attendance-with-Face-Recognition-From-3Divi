@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../data/settings_repository.dart';
-import '../../../../models/settings_model.dart';
+import '../../data/repository/settings_repository.dart';
+import '../../data/models/settings_model.dart';
 
 // Events
 abstract class SettingsEvent {}
@@ -12,10 +12,17 @@ class UpdateFaceRecognitionEvent extends SettingsEvent {
   UpdateFaceRecognitionEvent(this.enabled);
 }
 
-class UpdateLateHourEvent extends SettingsEvent {
-  final int hour;
-  final int minute;
-  UpdateLateHourEvent({required this.hour, required this.minute});
+class UpdateCheckInOutHoursEvent extends SettingsEvent {
+  final int checkInHour;
+  final int checkInMinute;
+  final int checkOutHour;
+  final int checkOutMinute;
+  UpdateCheckInOutHoursEvent({
+    required this.checkInHour,
+    required this.checkInMinute,
+    required this.checkOutHour,
+    required this.checkOutMinute,
+  });
 }
 
 class UpdateApiConfigEvent extends SettingsEvent {
@@ -56,7 +63,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   SettingsBloc(this._repository) : super(const SettingsInitial()) {
     on<LoadSettingsEvent>(_onLoadSettings);
     on<UpdateFaceRecognitionEvent>(_onUpdateFaceRecognition);
-    on<UpdateLateHourEvent>(_onUpdateLateHour);
+    on<UpdateCheckInOutHoursEvent>(_onUpdateCheckInOutHours);
     on<UpdateApiConfigEvent>(_onUpdateApiConfig);
   }
 
@@ -86,12 +93,17 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     }
   }
 
-  Future<void> _onUpdateLateHour(
-    UpdateLateHourEvent event,
+  Future<void> _onUpdateCheckInOutHours(
+    UpdateCheckInOutHoursEvent event,
     Emitter<SettingsState> emit,
   ) async {
     try {
-      await _repository.setLateHour(event.hour, event.minute);
+      await _repository.setCheckInOutHours(
+        event.checkInHour,
+        event.checkInMinute,
+        event.checkOutHour,
+        event.checkOutMinute,
+      );
       final settings = await _repository.getSettings();
       emit(SettingsLoaded(settings));
     } catch (e) {

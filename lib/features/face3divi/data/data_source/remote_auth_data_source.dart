@@ -82,12 +82,12 @@ class RemoteAuthDataSource {
 
   Future<UploadFaceTemplatesResult> uploadFaceTemplates({
     required String baseUrl,
-    required String employeeCode,
+    required String userId,
     required List<Map<String, String>> templates,
   }) async {
     try {
       final url = '$baseUrl/FaceData/face_data';
-      final body = {'employee_code': employeeCode, 'data': templates};
+      final body = {'user_id': userId, 'data': templates};
 
       final response = await _dio.post<dynamic>(
         url,

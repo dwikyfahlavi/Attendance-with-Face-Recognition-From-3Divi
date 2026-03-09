@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import '../../../models/user_model.dart';
-import 'remote_auth_data_source.dart';
+import '../models/user_model.dart';
+import '../data_source/remote_auth_data_source.dart';
 import 'settings_repository.dart';
 import 'user_repository.dart';
 
@@ -18,9 +18,9 @@ class RemoteAuthRepository {
   final UserRepository _userRepository;
   final RemoteAuthDataSource _remoteAuthDataSource;
 
-  Future<String?> getCurrentEmployeeCode() async {
+  Future<String?> getCurrentUserId() async {
     final settings = await _settingsRepository.getSettings();
-    return settings.employeeCode;
+    return settings.userId;
   }
 
   Future<String> loginAndSyncUser({
@@ -40,9 +40,12 @@ class RemoteAuthRepository {
 
       if (currentUser['employee_code'] != null &&
           currentUser['employee_code']!.isNotEmpty) {
-        await _settingsRepository.setCurrentEmployee(
+        await _settingsRepository.setCurrentEmployeeAndAttendanceCode(
           currentUser['employee_code'] ?? '',
           currentUser['employee_name'] ?? '',
+          currentUser['user_id'] ?? '',
+          currentUser['attendance_code'] ?? '',
+          currentUser['unattendance_code'] ?? '',
         );
       }
       if (users.isEmpty) {
@@ -59,8 +62,8 @@ class RemoteAuthRepository {
     } on RemoteAuthException {
       rethrow;
     } catch (e) {
-      throw const RemoteAuthException(
-        'Unable to process login data. Please try again.',
+      throw RemoteAuthException(
+        'Unable to process login data. Please try again. ${e.toString()}',
       );
     }
   }
@@ -71,7 +74,7 @@ class RemoteAuthRepository {
     final settings = await _settingsRepository.getSettings();
     return _remoteAuthDataSource.uploadFaceTemplates(
       baseUrl: settings.apiBaseUrl,
-      employeeCode: settings.employeeCode!,
+      userId: settings.userId!,
       templates: templates,
     );
   }
@@ -92,9 +95,23 @@ class RemoteAuthRepository {
       throw const RemoteAuthException('Invalid M_Config_Schema format.');
     }
 
+    // Get the first allowed attendance code
+    String? firstAllowedCode = '';
+    final allowedCodes =
+        configSchema['allowed_attendance_codes_for_work_assignment'] as List?;
+    if (allowedCodes != null && allowedCodes.isNotEmpty) {
+      final firstCode = allowedCodes.first as Map<String, dynamic>;
+      firstAllowedCode =
+          _toNullableString(firstCode['allowed_attendance_code']) ?? '';
+    }
+
     return {
       'employee_code': _toNullableString(configSchema['employee_code']) ?? '',
       'employee_name': _toNullableString(configSchema['employee_name']) ?? '',
+      'user_id': _toNullableString(configSchema['user_id']) ?? '',
+      'attendance_code': firstAllowedCode,
+      'unattendance_code':
+          _toNullableString(configSchema['attendance_unattendded_value']) ?? '',
     };
   }
 

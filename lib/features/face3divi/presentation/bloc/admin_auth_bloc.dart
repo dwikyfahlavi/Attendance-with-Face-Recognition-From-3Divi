@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fr3divi/features/face3divi/data/user_repository.dart';
-import 'package:fr3divi/features/face3divi/data/admin_pin_repository.dart';
-import 'package:fr3divi/models/user_model.dart';
+import 'package:fr3divi/features/face3divi/data/repository/user_repository.dart';
+import 'package:fr3divi/features/face3divi/data/repository/admin_pin_repository.dart';
+import 'package:fr3divi/features/face3divi/data/models/user_model.dart';
 
 // Events
 abstract class AdminAuthEvent {}

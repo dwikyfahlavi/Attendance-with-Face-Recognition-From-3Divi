@@ -1,9 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:typed_data';
 import 'package:face_sdk_3divi/face_sdk_3divi.dart';
-import '../../data/user_repository.dart';
-import '../../data/face_sdk_repository.dart';
-import '../../../../models/user_model.dart';
+import '../../data/repository/user_repository.dart';
+import '../../data/repository/face_sdk_repository.dart';
+import '../../data/models/user_model.dart';
 import '../../../../core/constants/face_recognition_config.dart';
 
 enum MemberDetailAction { updated, deleted }

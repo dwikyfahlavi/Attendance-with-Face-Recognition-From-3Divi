@@ -5,7 +5,8 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../bloc/admin_dashboard_bloc.dart';
 
 class AdminDashboardPage extends StatelessWidget {
-  const AdminDashboardPage({super.key});
+  final String name;
+  const AdminDashboardPage(this.name, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -156,7 +157,7 @@ class AdminDashboardPage extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Welcome back',
+                                  'Welcome back, $name!',
                                   style: AppTextStyles.bodySmall.copyWith(
                                     color: AppColors.textSecondary,
                                   ),
@@ -220,15 +221,15 @@ class AdminDashboardPage extends StatelessWidget {
 
   Widget _buildMenuGrid(BuildContext context) {
     final menuItems = [
-      _MenuItem(
-        icon: Icons.person_add,
-        title: 'Register Member',
-        subtitle: 'Add new member',
-        color: AppColors.successGreen,
-        onTap: () {
-          Navigator.of(context).pushNamed('/admin/register');
-        },
-      ),
+      // _MenuItem(
+      //   icon: Icons.person_add,
+      //   title: 'Register Member',
+      //   subtitle: 'Add new member',
+      //   color: AppColors.successGreen,
+      //   onTap: () {
+      //     Navigator.of(context).pushNamed('/admin/register');
+      //   },
+      // ),
       _MenuItem(
         icon: Icons.people,
         title: 'Members List',

@@ -5,9 +5,9 @@ import 'package:face_sdk_3divi/face_sdk_3divi.dart';
 // ignore: depend_on_referenced_packages
 import 'package:image/image.dart' as img_lib;
 
-import '../../data/user_repository.dart';
-import '../../data/face_sdk_repository.dart';
-import '../../../../models/user_model.dart';
+import '../../data/repository/user_repository.dart';
+import '../../data/repository/face_sdk_repository.dart';
+import '../../data/models/user_model.dart';
 import '../../../../core/constants/face_recognition_config.dart';
 
 // Events

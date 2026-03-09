@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import '../bloc/attendance_list_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../models/absen_model.dart';
+import '../../data/models/absen_model.dart';
 
 class AdminAttendancePage extends StatefulWidget {
   const AdminAttendancePage({super.key});
@@ -57,8 +57,9 @@ class _AdminAttendancePageState extends State<AdminAttendancePage> {
               child: Padding(
                 padding: const EdgeInsets.all(14),
                 child: TableCalendar(
-                  firstDay: DateTime.utc(2024, 1, 1),
-                  lastDay: DateTime.utc(2026, 12, 31),
+                  calendarFormat: CalendarFormat.week,
+                  firstDay: DateTime.now().subtract(const Duration(days: 5)),
+                  lastDay: DateTime.now(),
                   focusedDay: _focusedDay,
                   selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                   onDaySelected: (selectedDay, focusedDay) {
@@ -98,11 +99,11 @@ class _AdminAttendancePageState extends State<AdminAttendancePage> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  _buildLegendItem('Present', AppColors.successGreen),
+                  _buildLegendItem('Check-In', AppColors.successGreen),
                   const SizedBox(width: 16),
                   _buildLegendItem('Absent', AppColors.absent),
                   const SizedBox(width: 16),
-                  _buildLegendItem('Late', AppColors.late),
+                  _buildLegendItem('Check-Out', AppColors.late),
                 ],
               ),
             ),
@@ -206,14 +207,14 @@ class _AdminAttendancePageState extends State<AdminAttendancePage> {
     IconData statusIcon;
     String statusLabel;
 
-    if (attendance.isLate) {
+    if (attendance.type == 'CheckOut') {
       statusColor = AppColors.late;
-      statusIcon = Icons.schedule;
-      statusLabel = 'Late';
-    } else if (attendance.status == 'OnTime') {
+      statusIcon = Icons.logout;
+      statusLabel = 'Check-Out';
+    } else if (attendance.type == 'CheckIn') {
       statusColor = AppColors.successGreen;
       statusIcon = Icons.check_circle;
-      statusLabel = 'On Time';
+      statusLabel = 'Check-In';
     } else {
       statusColor = AppColors.absent;
       statusIcon = Icons.cancel;

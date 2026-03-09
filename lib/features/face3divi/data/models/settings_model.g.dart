@@ -17,43 +17,52 @@ class SettingsModelAdapter extends TypeAdapter<SettingsModel> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return SettingsModel(
-      lateHour: fields[0] as int,
-      lateMinute: fields[1] as int,
-      lastUpdated: fields[2] as DateTime,
-      updatedBy: fields[3] as String?,
-      faceRecognitionEnabled: fields[4] == null ? false : fields[4] as bool,
-      baseProtocol: fields[5] as String,
-      ipPort: fields[6] as String,
-      apiPath: fields[7] as String,
-      employeeCode: fields[8] as String?,
-      employeeName: fields[9] as String?,
+      checkInHour: fields[0] as int,
+      checkInMinute: fields[1] as int,
+      checkOutHour: fields[2] as int,
+      checkOutMinute: fields[3] as int,
+      lastUpdated: fields[4] as DateTime,
+      updatedBy: fields[5] as String?,
+      faceRecognitionEnabled: fields[6] == null ? false : fields[6] as bool,
+      baseProtocol: fields[7] as String,
+      ipPort: fields[8] as String,
+      apiPath: fields[9] as String,
+      employeeCode: fields[10] as String?,
+      employeeName: fields[11] as String?,
+      userId: fields[12] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, SettingsModel obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(13)
       ..writeByte(0)
-      ..write(obj.lateHour)
+      ..write(obj.checkInHour)
       ..writeByte(1)
-      ..write(obj.lateMinute)
+      ..write(obj.checkInMinute)
       ..writeByte(2)
-      ..write(obj.lastUpdated)
+      ..write(obj.checkOutHour)
       ..writeByte(3)
-      ..write(obj.updatedBy)
+      ..write(obj.checkOutMinute)
       ..writeByte(4)
-      ..write(obj.faceRecognitionEnabled)
+      ..write(obj.lastUpdated)
       ..writeByte(5)
-      ..write(obj.baseProtocol)
+      ..write(obj.updatedBy)
       ..writeByte(6)
-      ..write(obj.ipPort)
+      ..write(obj.faceRecognitionEnabled)
       ..writeByte(7)
-      ..write(obj.apiPath)
+      ..write(obj.baseProtocol)
       ..writeByte(8)
-      ..write(obj.employeeCode)
+      ..write(obj.ipPort)
       ..writeByte(9)
-      ..write(obj.employeeName);
+      ..write(obj.apiPath)
+      ..writeByte(10)
+      ..write(obj.employeeCode)
+      ..writeByte(11)
+      ..write(obj.employeeName)
+      ..writeByte(12)
+      ..write(obj.userId);
   }
 
   @override

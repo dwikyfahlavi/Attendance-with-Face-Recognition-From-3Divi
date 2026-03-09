@@ -1,22 +1,22 @@
-import '../../features/face3divi/data/absen_local_data_source.dart';
-import '../../features/face3divi/data/absen_repository.dart';
-import '../../features/face3divi/data/admin_pin_repository.dart';
-import '../../features/face3divi/data/face_sdk_data_source.dart';
-import '../../features/face3divi/data/face_sdk_repository.dart';
+import '../../features/face3divi/data/data_source/absen_local_data_source.dart';
+import '../../features/face3divi/data/repository/absen_repository.dart';
+import '../../features/face3divi/data/repository/admin_pin_repository.dart';
+import '../../features/face3divi/data/data_source/face_sdk_data_source.dart';
+import '../../features/face3divi/data/repository/face_sdk_repository.dart';
 import '../../features/face3divi/data/face_verification_service.dart';
-import '../../features/face3divi/data/settings_repository.dart';
-import '../../features/face3divi/data/remote_auth_data_source.dart';
-import '../../features/face3divi/data/remote_auth_repository.dart';
-import '../../features/face3divi/data/user_local_data_source.dart';
-import '../../features/face3divi/data/user_repository.dart';
-import '../../models/user_model.dart';
-import '../../models/absen_model.dart';
-import '../../models/admin_pin_model.dart';
-import '../../models/settings_model.dart';
+import '../../features/face3divi/data/repository/settings_repository.dart';
+import '../../features/face3divi/data/data_source/remote_auth_data_source.dart';
+import '../../features/face3divi/data/repository/remote_auth_repository.dart';
+import '../../features/face3divi/data/data_source/user_local_data_source.dart';
+import '../../features/face3divi/data/repository/user_repository.dart';
+import '../../features/face3divi/data/models/user_model.dart';
+import '../../features/face3divi/data/models/absen_model.dart';
+import '../../features/face3divi/data/models/admin_pin_model.dart';
+import '../../features/face3divi/data/models/settings_model.dart';
 import '../services/camera_service.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-import '../../data/hive_boxes.dart';
+import '../../features/face3divi/data/hive_boxes.dart';
 
 /// Manual service locator for dependency injection
 /// Replace GetIt/Injectable with simple factory functions
@@ -66,7 +66,7 @@ class ServiceLocator {
     _userRepository = UserRepository(_userLocalDataSource);
 
     _absenLocalDataSource = AbsenLocalDataSource(_absenBox);
-    _absenRepository = AbsenRepository(_absenLocalDataSource);
+    _absenRepository = AbsenRepository(_absenLocalDataSource, _userRepository);
 
     _adminPinRepository = AdminPinRepository(_adminPinBox);
     await _adminPinRepository.initializeDefaultPin();
