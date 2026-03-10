@@ -35,6 +35,12 @@ class RemoteAuthRepository {
         password: password,
       );
 
+      if (!isFieldStaffRole(response)) {
+        throw const RemoteAuthException(
+          'Login failed: User does not have admin privileges.',
+        );
+      }
+
       final users = _mapLoginResponseToUsers(response);
       final currentUser = _mapCurrentUser(response);
 
@@ -113,6 +119,21 @@ class RemoteAuthRepository {
       'unattendance_code':
           _toNullableString(configSchema['attendance_unattendded_value']) ?? '',
     };
+  }
+
+  bool isFieldStaffRole(Map<String, dynamic> responseData) {
+    final global =
+        (responseData['global'] as Map<String, dynamic>?) ?? responseData;
+    if (global['Roles_Schema'] == null ||
+        (global['Roles_Schema'] as List).isEmpty) {
+      //this role can\'t login in mobile app.
+      throw const RemoteAuthException(
+        'Login failed: User role can\'t login to mobile app. Please contact administrator.',
+      );
+    }
+    final role = (global['Roles_Schema'] as List).first['user_roles'];
+
+    return role != null && role.toLowerCase() == 'field_staff';
   }
 
   List<RegisteredUser> _mapLoginResponseToUsers(

@@ -87,6 +87,8 @@ class AttendanceListBloc
         event.endDate,
       );
 
+      items.sort((a, b) => a.jamAbsen.compareTo(b.jamAbsen));
+
       emit(AttendanceListLoaded(items));
     } catch (e) {
       emit(AttendanceListError(e.toString()));

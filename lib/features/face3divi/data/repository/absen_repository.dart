@@ -146,16 +146,18 @@ class AbsenRepository {
               ? checkOutRecords.last
               : null;
 
-          if (checkInRecord != null) {
-            attendance.add({
-              'employee_id': employeeId,
-              'attendance_code': attendanceCode,
-              'clock_in': _formatDateTime(checkInRecord.jamAbsen),
-              'clock_out': checkOutRecord != null
-                  ? _formatDateTime(checkOutRecord.jamAbsen)
-                  : null,
-            });
-          }
+          // if (checkInRecord != null) {
+          attendance.add({
+            'employee_id': employeeId,
+            'attendance_code': attendanceCode,
+            'clock_in': checkInRecord != null
+                ? _formatDateTime(checkInRecord.jamAbsen)
+                : null,
+            'clock_out': checkOutRecord != null
+                ? _formatDateTime(checkOutRecord.jamAbsen)
+                : null,
+          });
+          // }
         } else {
           // Employee has no attendance - use unattendanceCode
           attendance.add({

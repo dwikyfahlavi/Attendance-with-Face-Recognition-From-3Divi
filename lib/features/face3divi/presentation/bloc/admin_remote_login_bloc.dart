@@ -59,30 +59,19 @@ class AdminRemoteLoginBloc
       try {
         final history = await serviceLocator.absenRepository
             .fetchAttendanceHistory();
+        final allAbsen = await serviceLocator.absenRepository.getAllAbsen();
 
-        for (final item in history) {
-          final allAbsen = await serviceLocator.absenRepository.getAllAbsen();
-          final existingList = allAbsen.where(
-            (local) => local.serverId == item.serverId,
-          );
-
-          if (existingList.isNotEmpty) {
-            final existing = existingList.first;
-            // Update existing record
-            existing.employeeId = item.employeeId;
-            existing.nama = item.nama;
-            existing.jamAbsen = item.jamAbsen;
-            existing.type = item.type;
-            existing.isUploaded = item.isUploaded;
-            existing.createdDate = item.createdDate;
-            existing.updatedDate = item.updatedDate;
-
-            await existing.save();
-          } else {
-            // Add new record with absence check
-
-            await serviceLocator.absenRepository.addAbsen(item);
+        // Remove local records that have serverId (synced ones) to replace with API data
+        for (var item in allAbsen) {
+          if (item.serverId != null || item.isUploaded) {
+            await item.delete();
           }
+          // Local data without serverId is left untouched
+        }
+
+        // Add data from API for history attendance
+        for (var item in history) {
+          await serviceLocator.absenRepository.addAbsen(item);
         }
       } catch (e) {
         // Log error but continue (e.g., print('Failed to sync attendance history: $e'))
