@@ -27,7 +27,7 @@ class UserAttendanceScanPage extends StatefulWidget {
 }
 
 class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
-  late CameraController controller;
+  CameraController? controller;
   AsyncVideoWorker? _videoWorker;
   AsyncProcessingBlock? liveness;
   final GlobalKey _pictureKey = GlobalKey();
@@ -42,6 +42,7 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
   bool _isSwitching = false;
   bool _isInitialized = false;
   bool _isExiting = false;
+  bool _isFlashOn = false;
 
   DateTime? _lastAbsenTime;
   String? _lastAbsenEmployeeId;
@@ -77,6 +78,88 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
     });
   }
 
+  int _findCameraIndex(CameraLensDirection lensDirection) {
+    return cameras.indexWhere(
+      (camera) => camera.lensDirection == lensDirection,
+    );
+  }
+
+  /// Toggle flash on/off
+  Future<void> _toggleFlash() async {
+    final activeController = controller;
+
+    // Add multiple safety checks to prevent using disposed controller
+    if (_isDisposing || _isSwitching || !mounted || activeController == null) {
+      return;
+    }
+
+    // Early exit if not a back camera - front cameras don't have flash
+    if (currentCameraIndex < 0 ||
+        cameras.isEmpty ||
+        cameras[currentCameraIndex].lensDirection != CameraLensDirection.back) {
+      return;
+    }
+
+    try {
+      // Multiple checks to ensure controller is valid
+      if (!activeController.value.isInitialized ||
+          _isDisposing ||
+          _isSwitching) {
+        return;
+      }
+
+      // Only proceed if we're still mounted and not switching
+      if (!mounted || _isSwitching || _isDisposing) {
+        return;
+      }
+
+      if (_isFlashOn) {
+        await activeController
+            .setFlashMode(FlashMode.off)
+            .timeout(
+              const Duration(milliseconds: 500),
+              onTimeout: () {
+                // Flash operation timeout
+              },
+            );
+        if (mounted && !_isDisposing && !_isSwitching) {
+          setState(() {
+            _isFlashOn = false;
+          });
+        }
+      } else {
+        await activeController
+            .setFlashMode(FlashMode.torch)
+            .timeout(
+              const Duration(milliseconds: 500),
+              onTimeout: () {
+                // Flash operation timeout
+              },
+            );
+        if (mounted && !_isDisposing && !_isSwitching) {
+          setState(() {
+            _isFlashOn = true;
+          });
+        }
+      }
+    } on StateError {
+      // Controller was disposed - silently ignore
+      if (mounted && !_isDisposing) {
+        _isFlashOn = false;
+      }
+    } catch (e) {
+      if (mounted && !_isDisposing) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Flash is not available on this device'),
+            backgroundColor: AppColors.warningOrange,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -105,10 +188,15 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
 
       if (Platform.isIOS) flipX = false;
 
-      final rearIndex = cameras.indexWhere(
-        (camera) => camera.lensDirection == CameraLensDirection.front,
-      );
-      currentCameraIndex = rearIndex >= 0 ? rearIndex : 0;
+      final frontIndex = _findCameraIndex(CameraLensDirection.front);
+      currentCameraIndex = frontIndex >= 0 ? frontIndex : 0;
+
+      // Reset flash when initializing if front camera is selected
+      if (currentCameraIndex >= 0 &&
+          cameras[currentCameraIndex].lensDirection ==
+              CameraLensDirection.front) {
+        _isFlashOn = false;
+      }
 
       // Initialize liveness
       liveness = await _faceSdkSession!.service.createAsyncProcessingBlock({
@@ -204,10 +292,15 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
     if (mounted) setState(() {});
   }
 
-  Future<void> stopCameraStreamIfNeeded() async {
-    if (controller.value.isStreamingImages) {
+  Future<void> stopCameraStreamIfNeeded([
+    CameraController? cameraController,
+  ]) async {
+    final activeController = cameraController ?? controller;
+    if (activeController == null) return;
+
+    if (activeController.value.isStreamingImages) {
       try {
-        await controller.stopImageStream();
+        await activeController.stopImageStream();
         await Future.delayed(const Duration(milliseconds: 300));
       } catch (e) {
         // Ignore errors when stopping stream
@@ -217,23 +310,32 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
 
   Future<void> _initCamera(int camIndex) async {
     if (cameras.isEmpty) return;
-    try {
-      controller = CameraController(
-        cameras[camIndex],
-        ResolutionPreset.high,
-        enableAudio: false,
-      );
-      await controller.initialize();
-      baseAngle = getBaseAngle(controller);
+    final newController = CameraController(
+      cameras[camIndex],
+      ResolutionPreset.high,
+      enableAudio: false,
+    );
 
-      if (!mounted) return;
+    try {
+      await newController.initialize();
+      baseAngle = getBaseAngle(newController);
+
+      if (!mounted || _isDisposing) {
+        await newController.dispose();
+        return;
+      }
+
+      controller = newController;
+      currentCameraIndex = camIndex;
+      _isFlashOn = false;
 
       setState(() {});
 
-      if (!controller.value.isStreamingImages) {
-        await controller.startImageStream(_processStream);
+      if (!newController.value.isStreamingImages) {
+        await newController.startImageStream(_processStream);
       }
     } catch (e) {
+      await newController.dispose();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -246,11 +348,16 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
   }
 
   Future<void> _disposeControllerSafely() async {
+    final activeController = controller;
+    controller = null;
+
     try {
-      if (controller.value.isStreamingImages) {
-        await stopCameraStreamIfNeeded();
+      if (activeController == null) return;
+
+      if (activeController.value.isStreamingImages) {
+        await stopCameraStreamIfNeeded(activeController);
       }
-      await controller.dispose();
+      await activeController.dispose();
     } catch (_) {
       // Ignore camera dispose race from CameraX plugin.
     }
@@ -260,9 +367,31 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
     if (_isSwitching || _isDisposing || cameras.length < 2) return;
     _isSwitching = true;
     try {
+      final currentLens =
+          cameras[currentCameraIndex].lensDirection == CameraLensDirection.front
+          ? CameraLensDirection.front
+          : CameraLensDirection.back;
+      final targetLens = currentLens == CameraLensDirection.front
+          ? CameraLensDirection.back
+          : CameraLensDirection.front;
+      final targetIndex = _findCameraIndex(targetLens);
+
+      if (targetIndex < 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '${targetLens == CameraLensDirection.front ? 'Front' : 'Back'} camera not available',
+              ),
+              backgroundColor: AppColors.warningOrange,
+            ),
+          );
+        }
+        return;
+      }
+
       await _disposeControllerSafely();
-      currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
-      await _initCamera(currentCameraIndex);
+      await _initCamera(targetIndex);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -272,8 +401,9 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
           ),
         );
       }
+    } finally {
+      _isSwitching = false;
     }
-    _isSwitching = false;
   }
 
   Future<void> _processStream(CameraImage image) async {
@@ -761,7 +891,9 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isInitialized || _isDisposing) {
+    final activeController = controller;
+
+    if (!_isInitialized || _isDisposing || activeController == null) {
       return Scaffold(
         backgroundColor: AppColors.backgroundLight,
         appBar: AppBar(
@@ -781,7 +913,7 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
       );
     }
 
-    if (!controller.value.isInitialized) return Container();
+    if (!activeController.value.isInitialized) return Container();
 
     return PopScope(
       canPop: false,
@@ -830,12 +962,15 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
                               fit: BoxFit.cover,
                               child: SizedBox(
                                 width: (baseAngle == 1 || baseAngle == 2)
-                                    ? controller.value.previewSize!.height
-                                    : controller.value.previewSize!.width,
+                                    ? activeController.value.previewSize!.height
+                                    : activeController.value.previewSize!.width,
                                 height: (baseAngle == 1 || baseAngle == 2)
-                                    ? controller.value.previewSize!.width
-                                    : controller.value.previewSize!.height,
-                                child: CameraPreview(controller),
+                                    ? activeController.value.previewSize!.width
+                                    : activeController
+                                          .value
+                                          .previewSize!
+                                          .height,
+                                child: CameraPreview(activeController),
                               ),
                             ),
                           ),
@@ -1186,8 +1321,42 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
                 ),
               ],
             ),
-            floatingActionButton: cameras.length > 1
-                ? Container(
+            floatingActionButton: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                // Flash toggle button (only show for back camera when not switching)
+                if (currentCameraIndex >= 0 &&
+                    cameras[currentCameraIndex].lensDirection ==
+                        CameraLensDirection.back &&
+                    !_isSwitching)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 20, right: 10),
+                    child: FloatingActionButton(
+                      mini: true,
+                      heroTag: "btnFlash",
+                      tooltip: "Toggle Flash",
+                      backgroundColor: _isFlashOn
+                          ? Colors.amber.withOpacity(0.9)
+                          : Colors.white.withOpacity(0.9),
+                      foregroundColor: _isFlashOn
+                          ? Colors.white
+                          : AppColors.primaryPurple,
+                      elevation: 8,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      onPressed: _isDisposing || _isSwitching
+                          ? null
+                          : _toggleFlash,
+                      child: Icon(
+                        _isFlashOn ? Icons.flash_on : Icons.flash_off,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                // Camera switch button (only if multiple cameras)
+                if (cameras.length > 1)
+                  Container(
                     margin: const EdgeInsets.only(bottom: 20),
                     child: FloatingActionButton(
                       heroTag: "btnSwitch",
@@ -1205,8 +1374,9 @@ class _UserAttendanceScanPageState extends State<UserAttendanceScanPage> {
                             },
                       child: const Icon(Icons.flip_camera_android, size: 24),
                     ),
-                  )
-                : null,
+                  ),
+              ],
+            ),
             floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
           );
         },

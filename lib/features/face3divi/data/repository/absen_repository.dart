@@ -221,7 +221,8 @@ class AbsenRepository {
       }
     } on DioException catch (e) {
       throw Exception(_mapDioErrorToMessage(e));
-    } catch (_) {
+    } catch (e) {
+      print('Error uploading attendance: $e');
       throw Exception(
         'Unable to upload attendance right now. Please try again.',
       );

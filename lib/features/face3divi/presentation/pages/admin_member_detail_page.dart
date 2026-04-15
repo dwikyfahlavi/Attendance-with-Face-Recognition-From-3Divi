@@ -183,60 +183,60 @@ class AdminMemberDetailPage extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryPurple,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            elevation: 0,
-                          ),
-                          onPressed: isLoading
-                              ? null
-                              : () => _showEditDialog(context, displayUser),
-                          child: const Text(
-                            'Edit Member',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.errorRed,
-                            side: BorderSide(
-                              color: AppColors.errorRed.withOpacity(0.3),
-                              width: 1.5,
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          onPressed: isLoading
-                              ? null
-                              : () => _showDeleteConfirmation(
-                                  context,
-                                  displayUser,
-                                ),
-                          child: const Text(
-                            'Delete Member',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
+                      // const SizedBox(height: 10),
+                      // SizedBox(
+                      //   width: double.infinity,
+                      //   child: ElevatedButton(
+                      //     style: ElevatedButton.styleFrom(
+                      //       backgroundColor: AppColors.primaryPurple,
+                      //       padding: const EdgeInsets.symmetric(vertical: 14),
+                      //       shape: RoundedRectangleBorder(
+                      //         borderRadius: BorderRadius.circular(10),
+                      //       ),
+                      //       elevation: 0,
+                      //     ),
+                      //     onPressed: isLoading
+                      //         ? null
+                      //         : () => _showEditDialog(context, displayUser),
+                      //     child: const Text(
+                      //       'Edit Member',
+                      //       style: TextStyle(
+                      //         fontSize: 15,
+                      //         fontWeight: FontWeight.w600,
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ),
+                      // const SizedBox(height: 10),
+                      // SizedBox(
+                      //   width: double.infinity,
+                      //   child: OutlinedButton(
+                      //     style: OutlinedButton.styleFrom(
+                      //       foregroundColor: AppColors.errorRed,
+                      //       side: BorderSide(
+                      //         color: AppColors.errorRed.withOpacity(0.3),
+                      //         width: 1.5,
+                      //       ),
+                      //       padding: const EdgeInsets.symmetric(vertical: 14),
+                      //       shape: RoundedRectangleBorder(
+                      //         borderRadius: BorderRadius.circular(10),
+                      //       ),
+                      //     ),
+                      //     onPressed: isLoading
+                      //         ? null
+                      //         : () => _showDeleteConfirmation(
+                      //             context,
+                      //             displayUser,
+                      //           ),
+                      //     child: const Text(
+                      //       'Delete Member',
+                      //       style: TextStyle(
+                      //         fontSize: 15,
+                      //         fontWeight: FontWeight.w600,
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ),
                       const SizedBox(height: 16),
                     ],
                   ),
@@ -365,150 +365,6 @@ class AdminMemberDetailPage extends StatelessWidget {
 
     context.read<MemberDetailBloc>().add(
       UpdateMemberTemplate(user: user, imageBytes: bytes),
-    );
-  }
-
-  void _showEditDialog(BuildContext context, RegisteredUser user) {
-    final bloc = context.read<MemberDetailBloc>();
-    final nameController = TextEditingController(text: user.employeeName);
-    final departmentController = TextEditingController(
-      text: user.department ?? '',
-    );
-    var isAdmin = user.isAdmin;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          title: const Text(
-            'Edit Member',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Full Name',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: departmentController,
-                  decoration: InputDecoration(
-                    labelText: 'Department',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryPurple.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: AppColors.primaryPurple.withOpacity(0.2),
-                    ),
-                  ),
-                  child: SwitchListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
-                    value: isAdmin,
-                    onChanged: (value) => setDialogState(() => isAdmin = value),
-                    title: const Text(
-                      'Admin Access',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    activeColor: AppColors.primaryPurple,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryPurple,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-                bloc.add(
-                  UpdateMemberDetail(
-                    user: user,
-                    name: nameController.text,
-                    department: departmentController.text,
-                    isAdmin: isAdmin,
-                  ),
-                );
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showDeleteConfirmation(BuildContext context, RegisteredUser user) {
-    final bloc = context.read<MemberDetailBloc>();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: const Text(
-          'Delete Member',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        content: Text(
-          'Are you sure you want to delete ${user.employeeName}? This action cannot be undone.',
-          style: const TextStyle(fontSize: 15, color: Colors.black87),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.errorRed,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () {
-              Navigator.of(context).pop();
-              bloc.add(DeleteMemberDetail(user));
-            },
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
     );
   }
 }

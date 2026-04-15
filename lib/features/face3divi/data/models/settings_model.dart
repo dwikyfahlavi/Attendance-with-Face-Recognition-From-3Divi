@@ -52,8 +52,8 @@ class SettingsModel extends HiveObject {
   SettingsModel({
     this.checkInHour = 9, // Default: 9:00 AM
     this.checkInMinute = 0,
-    this.checkOutHour = 18, // Default: 6:00 PM
-    this.checkOutMinute = 0,
+    int? checkOutHour,
+    int? checkOutMinute,
     required this.lastUpdated,
     this.updatedBy,
     this.faceRecognitionEnabled = true, // Default: enabled
@@ -65,7 +65,28 @@ class SettingsModel extends HiveObject {
     this.userId,
     this.unattendanceCode = '',
     this.attendanceCode = '',
-  });
+  }) : checkOutHour = checkOutHour ?? _calculateCheckOutHour(9, 0),
+       checkOutMinute = checkOutMinute ?? _calculateCheckOutMinute(9, 0);
+
+  /// Calculate check-out hour as check-in hour + 1 minute
+  static int _calculateCheckOutHour(int checkInHour, int checkInMinute) {
+    int outMinute = checkInMinute + 1;
+    int outHour = checkInHour;
+    if (outMinute > 59) {
+      outMinute = 0;
+      outHour = (outHour + 1) % 24;
+    }
+    return outHour;
+  }
+
+  /// Calculate check-out minute as check-in minute + 1
+  static int _calculateCheckOutMinute(int checkInHour, int checkInMinute) {
+    int outMinute = checkInMinute + 1;
+    if (outMinute > 59) {
+      outMinute = 0;
+    }
+    return outMinute;
+  }
 
   String get apiBaseUrl => '$baseProtocol$ipPort$apiPath';
 

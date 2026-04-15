@@ -46,6 +46,7 @@ class _AdminRegistrationPageContentState
   List<CameraDescription> _cameras = [];
   CameraLensDirection _currentLensDirection = CameraLensDirection.front;
   bool _isSwitching = false;
+  bool _isFlashOn = false;
 
   String? _selectedDepartment;
   String? _photoPath;
@@ -85,6 +86,61 @@ class _AdminRegistrationPageContentState
 
     // Initialize camera
     _initializeCameraFuture = _initializeCamera();
+  }
+
+  /// Toggle flash on/off
+  Future<void> _toggleFlash() async {
+    // Add multiple safety checks to prevent using disposed controller
+    if (!mounted || _cameraController == null) {
+      return;
+    }
+
+    try {
+      // Multiple checks to ensure controller is valid
+      if (!_cameraController!.value.isInitialized) {
+        return;
+      }
+
+      // Only proceed if we're still mounted
+      if (!mounted) {
+        return;
+      }
+
+      if (_isFlashOn) {
+        await _cameraController!
+            .setFlashMode(FlashMode.off)
+            .timeout(const Duration(milliseconds: 500), onTimeout: () {});
+        if (mounted) {
+          setState(() {
+            _isFlashOn = false;
+          });
+        }
+      } else {
+        await _cameraController!
+            .setFlashMode(FlashMode.torch)
+            .timeout(const Duration(milliseconds: 500), onTimeout: () {});
+        if (mounted) {
+          setState(() {
+            _isFlashOn = true;
+          });
+        }
+      }
+    } on StateError catch (e) {
+      // Controller was disposed - silently ignore
+      if (mounted) {
+        _isFlashOn = false;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Flash is not available on this device'),
+            backgroundColor: AppColors.warningOrange,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _initializeCamera() async {
@@ -725,6 +781,39 @@ class _AdminRegistrationPageContentState
                                   },
                                 )),
                   ),
+                ),
+                const SizedBox(height: 16),
+
+                // Flash toggle button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Tooltip(
+                      message: _isFlashOn ? 'Turn off flash' : 'Turn on flash',
+                      child: GestureDetector(
+                        onTap: _toggleFlash,
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: _isFlashOn
+                                ? Colors.amber.withOpacity(0.2)
+                                : AppColors.backgroundLight,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: _isFlashOn
+                                  ? Colors.amber
+                                  : AppColors.borderLight,
+                            ),
+                          ),
+                          child: Icon(
+                            _isFlashOn ? Icons.flash_on : Icons.flash_off,
+                            color: _isFlashOn ? Colors.amber[700] : null,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
 

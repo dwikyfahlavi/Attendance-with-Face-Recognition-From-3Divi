@@ -24,6 +24,7 @@ class _MemberTemplateCapturePageState extends State<MemberTemplateCapturePage> {
   bool _isInitializing = true;
   bool _isCapturing = false;
   bool _isSwitching = false;
+  bool _isFlashOn = false;
   List<CameraDescription> _cameras = [];
   CameraLensDirection _currentLensDirection = CameraLensDirection.front;
 
@@ -59,7 +60,7 @@ class _MemberTemplateCapturePageState extends State<MemberTemplateCapturePage> {
 
     final controller = CameraController(
       selected,
-      ResolutionPreset.medium,
+      ResolutionPreset.high,
       enableAudio: false,
     );
 
@@ -120,6 +121,10 @@ class _MemberTemplateCapturePageState extends State<MemberTemplateCapturePage> {
     try {
       await _disposeControllerSafely();
       await Future<void>.delayed(const Duration(milliseconds: 120));
+      // Turn off flash if switching to front camera (front cameras don't have flash)
+      if (targetLens == CameraLensDirection.front) {
+        _isFlashOn = false;
+      }
       await _initializeCamera(targetLens);
     } catch (e) {
       if (!mounted) return;
@@ -151,6 +156,69 @@ class _MemberTemplateCapturePageState extends State<MemberTemplateCapturePage> {
       await controller.dispose();
     } catch (_) {
       // Ignore camera dispose race from CameraX plugin.
+    }
+  }
+
+  /// Toggle flash on/off
+  Future<void> _toggleFlash() async {
+    // Add safety checks to prevent using disposed controller
+    if (_isInitializing || _isCapturing || _isSwitching || !mounted) {
+      return;
+    }
+
+    // Early exit if not a back camera - front cameras don't have flash
+    if (_currentLensDirection != CameraLensDirection.back) {
+      return;
+    }
+
+    try {
+      // Multiple checks to ensure controller is valid
+      if (_controller == null ||
+          !_controller!.value.isInitialized ||
+          _isInitializing ||
+          _isSwitching) {
+        return;
+      }
+
+      // Only proceed if we're still mounted and not switching
+      if (!mounted || _isSwitching || _isInitializing) {
+        return;
+      }
+
+      if (_isFlashOn) {
+        await _controller!
+            .setFlashMode(FlashMode.off)
+            .timeout(const Duration(milliseconds: 500), onTimeout: () {});
+        if (mounted && !_isInitializing && !_isSwitching) {
+          setState(() {
+            _isFlashOn = false;
+          });
+        }
+      } else {
+        await _controller!
+            .setFlashMode(FlashMode.torch)
+            .timeout(const Duration(milliseconds: 500), onTimeout: () {});
+        if (mounted && !_isInitializing && !_isSwitching) {
+          setState(() {
+            _isFlashOn = true;
+          });
+        }
+      }
+    } on StateError catch (e) {
+      // Controller was disposed - silently ignore
+      if (mounted && !_isInitializing) {
+        _isFlashOn = false;
+      }
+    } catch (e) {
+      if (mounted && !_isInitializing) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Flash is not available on this device'),
+            backgroundColor: AppColors.warningOrange,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
@@ -323,6 +391,17 @@ class _MemberTemplateCapturePageState extends State<MemberTemplateCapturePage> {
         elevation: 0,
         backgroundColor: AppColors.backgroundWhite,
         actions: [
+          // Flash button (only show for back camera when not switching)
+          if (_currentLensDirection == CameraLensDirection.back &&
+              !_isSwitching)
+            IconButton(
+              onPressed: _toggleFlash,
+              tooltip: _isFlashOn ? 'Turn off flash' : 'Turn on flash',
+              icon: Icon(
+                _isFlashOn ? Icons.flash_on : Icons.flash_off,
+                color: _isFlashOn ? Colors.amber : null,
+              ),
+            ),
           IconButton(
             onPressed: _toggleCamera,
             tooltip: 'Switch camera',

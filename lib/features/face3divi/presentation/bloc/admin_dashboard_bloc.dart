@@ -145,7 +145,7 @@ class AdminDashboardBloc
 
       final users = _userRepository.getAllUsers();
       final usersWithTemplates = users
-          .where((user) => user.imageBytes != null)
+          .where((user) => user.imageBytes != null && user.isSynced == false)
           .toList();
 
       if (usersWithTemplates.isEmpty) {

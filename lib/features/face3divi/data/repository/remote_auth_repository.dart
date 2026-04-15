@@ -78,11 +78,27 @@ class RemoteAuthRepository {
     List<Map<String, String>> templates,
   ) async {
     final settings = await _settingsRepository.getSettings();
-    return _remoteAuthDataSource.uploadFaceTemplates(
-      baseUrl: settings.apiBaseUrl,
-      userId: settings.userId!,
-      templates: templates,
-    );
+    UploadFaceTemplatesResult results = await _remoteAuthDataSource
+        .uploadFaceTemplates(
+          baseUrl: settings.apiBaseUrl,
+          userId: settings.userId!,
+          templates: templates,
+        );
+
+    if (results.totalSuccess > 0) {
+      // Mark uploaded users as synced
+      for (final template in templates) {
+        final employeeId = template['employee_id'];
+        if (employeeId != null) {
+          final user = _userRepository.getUserByEmployeeId(employeeId);
+          if (user != null) {
+            user.isSynced = true;
+            await _userRepository.updateUser(user);
+          }
+        }
+      }
+    }
+    return results;
   }
 
   Map<String, String> _mapCurrentUser(Map<String, dynamic> responseData) {
@@ -141,14 +157,24 @@ class RemoteAuthRepository {
   ) {
     final global =
         (responseData['global'] as Map<String, dynamic>?) ?? responseData;
+    final fieldStaff =
+        (responseData['field_staff'] as Map<String, dynamic>?) ?? responseData;
     final employeeSchemaRaw = global['M_Employee_Schema'];
+    final faceTemplateSchemaRaw = fieldStaff['Employee_Face_Template_Schema'];
 
     // Assuming M_Employee_Schema is a JSON string, decode it
     final dynamic decodedSchema;
+    final dynamic decodedFaceTemplateSchema;
     if (employeeSchemaRaw is String) {
       decodedSchema = jsonDecode(employeeSchemaRaw);
     } else {
       decodedSchema = employeeSchemaRaw;
+    }
+
+    if (faceTemplateSchemaRaw is String) {
+      decodedFaceTemplateSchema = jsonDecode(faceTemplateSchemaRaw);
+    } else {
+      decodedFaceTemplateSchema = faceTemplateSchemaRaw;
     }
 
     final employeeItems = <Map<String, dynamic>>[];
@@ -162,6 +188,17 @@ class RemoteAuthRepository {
       employeeItems.add(decodedSchema);
     }
 
+    final faceTemplateItems = <Map<String, dynamic>>[];
+    if (decodedFaceTemplateSchema is List) {
+      for (final item in decodedFaceTemplateSchema) {
+        if (item is Map<String, dynamic>) {
+          faceTemplateItems.add(item);
+        }
+      }
+    } else if (decodedFaceTemplateSchema is Map<String, dynamic>) {
+      faceTemplateItems.add(decodedFaceTemplateSchema);
+    }
+
     final results = <RegisteredUser>[];
     for (final employeeData in employeeItems) {
       final apiJson = _mapEmployeeToApiJson(employeeData);
@@ -171,9 +208,22 @@ class RemoteAuthRepository {
         continue;
       }
 
+      if (faceTemplateItems.isNotEmpty) {
+        final matchingTemplate = faceTemplateItems.firstWhere(
+          (template) =>
+              (template['employee_id'] ?? '').toString().trim() == employeeId,
+          orElse: () => {},
+        );
+
+        if (matchingTemplate.isNotEmpty) {
+          apiJson['employee_face_template'] =
+              matchingTemplate['employee_face_template'];
+          apiJson['isSynced'] = true;
+        }
+      }
+
       final existing = _userRepository.getUserByEmployeeId(employeeId);
       final mappedUser = RegisteredUser.fromApiJson(apiJson, existing);
-      // print(mappedUser.toApiJson());
 
       results.add(mappedUser);
     }
@@ -211,6 +261,7 @@ class RemoteAuthRepository {
       ),
       'employee_face_template': employeeData['employee_face_template'],
       'plantCode': _readStringIfPresent(employeeData, 'employee_vendor'),
+      'isSynced': false,
     };
   }
 

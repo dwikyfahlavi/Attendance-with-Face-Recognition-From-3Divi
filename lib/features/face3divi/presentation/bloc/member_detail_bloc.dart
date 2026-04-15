@@ -260,6 +260,7 @@ class MemberDetailBloc extends Bloc<MemberDetailEvent, MemberDetailState> {
       }
 
       event.user.imageBytes = event.imageBytes;
+      event.user.isSynced = false; // Mark as needing sync
       await _repository.updateUser(event.user);
       emit(
         MemberDetailActionSuccess(

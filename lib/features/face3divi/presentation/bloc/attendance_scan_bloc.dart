@@ -130,8 +130,17 @@ class AttendanceScanBloc
       final now = event.attendanceTime;
       final user = event.user;
 
-      // Get settings for check-out time
+      // Get settings for check-in max time and calculated check-out time
       final settings = await _settingsRepository.getSettings();
+
+      final checkInMaxTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        settings.checkInHour,
+        settings.checkInMinute,
+      );
+
       final checkOutTime = DateTime(
         now.year,
         now.month,
@@ -140,8 +149,29 @@ class AttendanceScanBloc
         settings.checkOutMinute,
       );
 
-      // Determine type: CheckIn if before check-out, else CheckOut
-      final type = now.isBefore(checkOutTime) ? 'CheckIn' : 'CheckOut';
+      // Determine type and validate time window
+      // Check-in: 00:00 until checkInMaxTime
+      // Check-out: from checkOutTime onwards
+      // Invalid: between checkInMaxTime and checkOutTime
+      String? type;
+
+      if (now.isBefore(checkInMaxTime) ||
+          now.isAtSameMomentAs(checkInMaxTime)) {
+        type = 'CheckIn';
+      } else if (now.isAfter(checkOutTime) ||
+          now.isAtSameMomentAs(checkOutTime)) {
+        type = 'CheckOut';
+      } else {
+        // Time is between checkInMaxTime and checkOutTime - not allowed
+        emit(
+          AttendanceScanError(
+            'Attendance not allowed at this time. '
+            'Check-in allowed until ${settings.checkInHour.toString().padLeft(2, '0')}:${settings.checkInMinute.toString().padLeft(2, '0')}, '
+            'Check-out allowed from ${settings.checkOutHour.toString().padLeft(2, '0')}:${settings.checkOutMinute.toString().padLeft(2, '0')}',
+          ),
+        );
+        return;
+      }
 
       // Check for existing attendance of the same type today
       final todaysAbsen = await _absenRepository.getTodaysAbsen();

@@ -14,14 +14,19 @@ class AdminSettingsPage extends StatefulWidget {
 }
 
 class _AdminSettingsPageState extends State<AdminSettingsPage> {
-  late TextEditingController _checkInHourController;
-  late TextEditingController _checkInMinuteController;
-  late TextEditingController _checkOutHourController;
-  late TextEditingController _checkOutMinuteController;
+  late TextEditingController _checkInMaxHourController;
+  late TextEditingController _checkInMaxMinuteController;
   late TextEditingController _ipPortController;
   late TextEditingController _currentPinController;
   late TextEditingController _newPinController;
   late TextEditingController _confirmPinController;
+  late TextEditingController _attendanceCodeController;
+  late TextEditingController _unattendanceCodeController;
+
+  // ValueNotifiers for reactive check-in/out time updates
+  late ValueNotifier<int> _checkInHourNotifier;
+  late ValueNotifier<int> _checkInMinuteNotifier;
+  late ValueNotifier<Map<String, int>> _checkOutTimeNotifier;
 
   // final bool _showCurrentPin = false;
   // final bool _showNewPin = false;
@@ -30,14 +35,68 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   @override
   void initState() {
     super.initState();
-    _checkInHourController = TextEditingController(text: '09');
-    _checkInMinuteController = TextEditingController(text: '00');
-    _checkOutHourController = TextEditingController(text: '18');
-    _checkOutMinuteController = TextEditingController(text: '00');
+    _checkInMaxHourController = TextEditingController(text: '09');
+    _checkInMaxMinuteController = TextEditingController(text: '00');
     _ipPortController = TextEditingController(text: '172.21.23.70:81');
     _currentPinController = TextEditingController();
     _newPinController = TextEditingController();
     _confirmPinController = TextEditingController();
+    _attendanceCodeController = TextEditingController();
+    _unattendanceCodeController = TextEditingController();
+
+    // Initialize ValueNotifiers
+    _checkInHourNotifier = ValueNotifier<int>(9);
+    _checkInMinuteNotifier = ValueNotifier<int>(0);
+    _checkOutTimeNotifier = ValueNotifier<Map<String, int>>({
+      'hour': 9,
+      'minute': 1,
+    });
+
+    // Add listeners to update check-out time reactively
+    _checkInHourNotifier.addListener(_updateCheckOutTime);
+    _checkInMinuteNotifier.addListener(_updateCheckOutTime);
+
+    // Add listeners to text controllers to sync with ValueNotifiers
+    _checkInMaxHourController.addListener(() {
+      try {
+        final value = int.parse(_checkInMaxHourController.text);
+        if (value >= 0 && value <= 23) {
+          _checkInHourNotifier.value = value;
+        }
+      } catch (_) {}
+    });
+
+    _checkInMaxMinuteController.addListener(() {
+      try {
+        final value = int.parse(_checkInMaxMinuteController.text);
+        if (value >= 0 && value <= 59) {
+          _checkInMinuteNotifier.value = value;
+        }
+      } catch (_) {}
+    });
+  }
+
+  /// Update check-out time when check-in time changes
+  void _updateCheckOutTime() {
+    final outTime = _calculateCheckOutTime(
+      _checkInHourNotifier.value,
+      _checkInMinuteNotifier.value,
+    );
+    _checkOutTimeNotifier.value = outTime;
+  }
+
+  /// Calculate check-out time as check-in max time + 1 minute
+  Map<String, int> _calculateCheckOutTime(int checkInHour, int checkInMinute) {
+    int outHour = checkInHour;
+    int outMinute = checkInMinute + 1;
+
+    // If minute exceeds 59, increment hour
+    if (outMinute > 59) {
+      outMinute = 0;
+      outHour = (outHour + 1) % 24;
+    }
+
+    return {'hour': outHour, 'minute': outMinute};
   }
 
   Future<void> _saveApiConfig() async {
@@ -63,26 +122,18 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
 
   Future<void> _saveSettings() async {
     try {
-      final checkInHour = int.parse(_checkInHourController.text);
-      final checkInMinute = int.parse(_checkInMinuteController.text);
-      final checkOutHour = int.parse(_checkOutHourController.text);
-      final checkOutMinute = int.parse(_checkOutMinuteController.text);
+      final checkInMaxHour = int.parse(_checkInMaxHourController.text);
+      final checkInMaxMinute = int.parse(_checkInMaxMinuteController.text);
 
       // Validate input
-      if (checkInHour < 0 ||
-          checkInHour > 23 ||
-          checkInMinute < 0 ||
-          checkInMinute > 59 ||
-          checkOutHour < 0 ||
-          checkOutHour > 23 ||
-          checkOutMinute < 0 ||
-          checkOutMinute > 59 ||
-          checkOutHour < checkInHour ||
-          (checkOutHour == checkInHour && checkOutMinute <= checkInMinute)) {
+      if (checkInMaxHour < 0 ||
+          checkInMaxHour > 23 ||
+          checkInMaxMinute < 0 ||
+          checkInMaxMinute > 59) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Invalid times: Check-out must be after check-in'),
+              content: Text('Invalid time format'),
               backgroundColor: AppColors.warningOrange,
             ),
           );
@@ -90,14 +141,17 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
         return;
       }
 
+      // Get check-out time from ValueNotifier
+      final checkOutTime = _checkOutTimeNotifier.value;
+
       // Dispatch the update event to SettingsBloc
       if (mounted) {
         context.read<SettingsBloc>().add(
           UpdateCheckInOutHoursEvent(
-            checkInHour: checkInHour,
-            checkInMinute: checkInMinute,
-            checkOutHour: checkOutHour,
-            checkOutMinute: checkOutMinute,
+            checkInHour: checkInMaxHour,
+            checkInMinute: checkInMaxMinute,
+            checkOutHour: checkOutTime['hour']!,
+            checkOutMinute: checkOutTime['minute']!,
           ),
         );
       }
@@ -124,14 +178,18 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
 
   @override
   void dispose() {
-    _checkInHourController.dispose();
-    _checkInMinuteController.dispose();
-    _checkOutHourController.dispose();
-    _checkOutMinuteController.dispose();
+    _checkInMaxHourController.dispose();
+    _checkInMaxMinuteController.dispose();
     _ipPortController.dispose();
     _currentPinController.dispose();
     _newPinController.dispose();
     _confirmPinController.dispose();
+
+    // Dispose ValueNotifiers
+    _checkInHourNotifier.dispose();
+    _checkInMinuteNotifier.dispose();
+    _checkOutTimeNotifier.dispose();
+
     super.dispose();
   }
 
@@ -147,19 +205,17 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   Widget _buildContent(SettingsState settingsState) {
     // Initialize controllers with loaded settings when available
     if (settingsState is SettingsLoaded) {
-      _checkInHourController.text = settingsState.settings.checkInHour
+      _checkInMaxHourController.text = settingsState.settings.checkInHour
           .toString()
           .padLeft(2, '0');
-      _checkInMinuteController.text = settingsState.settings.checkInMinute
-          .toString()
-          .padLeft(2, '0');
-      _checkOutHourController.text = settingsState.settings.checkOutHour
-          .toString()
-          .padLeft(2, '0');
-      _checkOutMinuteController.text = settingsState.settings.checkOutMinute
+      _checkInMaxMinuteController.text = settingsState.settings.checkInMinute
           .toString()
           .padLeft(2, '0');
       _ipPortController.text = settingsState.settings.ipPort;
+      _attendanceCodeController.text =
+          settingsState.settings.attendanceCode ?? '';
+      _unattendanceCodeController.text =
+          settingsState.settings.unattendanceCode ?? '';
     }
 
     // final isFaceRecognitionEnabled = (settingsState is SettingsLoaded)
@@ -238,10 +294,11 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
               const SizedBox(height: 32),
               const Divider(thickness: 1),
               const SizedBox(height: 32),
-              // Check-in/out hour settings
+              // Check-in max time configuration
               _buildSettingSection(
-                title: 'Check-In/Out Hour Configuration',
-                subtitle: 'Set check-in and check-out times for attendance',
+                title: 'Check-In Maximum Time Configuration',
+                subtitle:
+                    'Set maximum check-in time. Check-out will be automatically set to +1 minute.',
                 child: Column(
                   children: [
                     Row(
@@ -251,12 +308,12 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Check-In Hour',
+                                'Check-In Max Hour',
                                 style: AppTextStyles.labelSmall,
                               ),
                               const SizedBox(height: 8),
                               TextFormField(
-                                controller: _checkInHourController,
+                                controller: _checkInMaxHourController,
                                 keyboardType: TextInputType.number,
                                 maxLength: 2,
                                 decoration: InputDecoration(
@@ -276,12 +333,12 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Check-In Minute',
+                                'Check-In Max Minute',
                                 style: AppTextStyles.labelSmall,
                               ),
                               const SizedBox(height: 8),
                               TextFormField(
-                                controller: _checkInMinuteController,
+                                controller: _checkInMaxMinuteController,
                                 keyboardType: TextInputType.number,
                                 maxLength: 2,
                                 decoration: InputDecoration(
@@ -297,59 +354,162 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundLight,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.borderLight),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             children: [
-                              Text(
-                                'Check-Out Hour',
-                                style: AppTextStyles.labelSmall,
+                              Expanded(
+                                child: Text(
+                                  'Auto-Calculated Check-Out Time (Max Check-In + 1 minute)',
+                                  style: AppTextStyles.labelSmall.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
                               ),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: _checkOutHourController,
-                                keyboardType: TextInputType.number,
-                                maxLength: 2,
-                                decoration: InputDecoration(
-                                  counterText: '',
-                                  hintText: '18',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                  horizontal: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryPurple.withOpacity(
+                                    0.1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'Read-only',
+                                  style: AppTextStyles.labelSmall.copyWith(
+                                    color: AppColors.primaryPurple,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Check-Out Minute',
-                                style: AppTextStyles.labelSmall,
-                              ),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: _checkOutMinuteController,
-                                keyboardType: TextInputType.number,
-                                maxLength: 2,
-                                decoration: InputDecoration(
-                                  counterText: '',
-                                  hintText: '00',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
+                          const SizedBox(height: 12),
+                          ValueListenableBuilder<Map<String, int>>(
+                            valueListenable: _checkOutTimeNotifier,
+                            builder: (context, checkOutTime, _) {
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Check-Out Hour',
+                                          style: AppTextStyles.labelSmall,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 12,
+                                            horizontal: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.backgroundWhite,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            border: Border.all(
+                                              color: AppColors.borderLight,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  checkOutTime['hour']!
+                                                      .toString()
+                                                      .padLeft(2, '0'),
+                                                  style: AppTextStyles
+                                                      .bodyMedium
+                                                      .copyWith(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                ),
+                                              ),
+                                              Icon(
+                                                Icons.lock,
+                                                size: 16,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ),
-                            ],
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Check-Out Minute',
+                                          style: AppTextStyles.labelSmall,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 12,
+                                            horizontal: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.backgroundWhite,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            border: Border.all(
+                                              color: AppColors.borderLight,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  checkOutTime['minute']!
+                                                      .toString()
+                                                      .padLeft(2, '0'),
+                                                  style: AppTextStyles
+                                                      .bodyMedium
+                                                      .copyWith(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                ),
+                                              ),
+                                              Icon(
+                                                Icons.lock,
+                                                size: 16,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -358,7 +518,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
               SizedBox(
                 width: double.infinity,
                 child: ModernButton(
-                  label: 'Save Check-In/Out Hours',
+                  label: 'Save Check-In Max Time',
                   onPressed: _saveSettings,
                 ),
               ),
