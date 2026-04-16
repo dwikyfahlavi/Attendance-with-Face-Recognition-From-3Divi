@@ -2,11 +2,107 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../data/hive_boxes.dart';
 import '../bloc/admin_dashboard_bloc.dart';
 
 class AdminDashboardPage extends StatelessWidget {
   final String name;
   const AdminDashboardPage(this.name, {super.key});
+
+  Future<Map<String, int>> _getUnsyncedDataCount() async {
+    final users = serviceLocator.userRepository.getAllUsers();
+
+    final unsyncedUsers = users
+        .where((u) => !u.isSynced && u.imageBytes != null)
+        .length;
+
+    final attendance = await serviceLocator.absenRepository.getAllAttendance();
+    final unuploadedAttendance = attendance.where((a) => !a.isUploaded).length;
+
+    return {'templates': unsyncedUsers, 'attendance': unuploadedAttendance};
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    final unsyncedData = await _getUnsyncedDataCount();
+    final hasData =
+        (unsyncedData['templates'] ?? 0) > 0 ||
+        (unsyncedData['attendance'] ?? 0) > 0;
+
+    if (!context.mounted) return;
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Logout Confirmation'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (hasData) ...[
+              const Text(
+                'Unsaved Data Alert:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.errorRed,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if ((unsyncedData['templates'] ?? 0) > 0)
+                Text(
+                  '• ${unsyncedData['templates']} face templates not uploaded',
+                ),
+              if ((unsyncedData['attendance'] ?? 0) > 0)
+                Text(
+                  '• ${unsyncedData['attendance']} attendance records not uploaded',
+                ),
+              const SizedBox(height: 16),
+            ],
+            const Text(
+              'All app data (users, attendance records, settings) will be permanently deleted from this device.',
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Are you sure you want to logout?',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+              try {
+                await HiveBoxes.clearAllBoxes();
+                if (context.mounted) {
+                  Navigator.of(
+                    context,
+                  ).pushNamedAndRemoveUntil('/', (route) => false);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error clearing data: $e'),
+                      backgroundColor: AppColors.errorRed,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text(
+              'Logout',
+              style: TextStyle(color: AppColors.errorRed),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,6 +184,13 @@ class AdminDashboardPage extends StatelessWidget {
               backgroundColor: AppColors.errorRed,
             ),
           );
+        } else if (state is AdminDashboardNoAttendance) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No attendance records to upload for today.'),
+              backgroundColor: AppColors.warningOrange,
+            ),
+          );
         }
       },
       child: Scaffold(
@@ -104,11 +207,7 @@ class AdminDashboardPage extends StatelessWidget {
             ),
             IconButton(
               icon: const Icon(Icons.logout),
-              onPressed: () {
-                Navigator.of(
-                  context,
-                ).pushNamedAndRemoveUntil('/', (route) => false);
-              },
+              onPressed: () => _handleLogout(context),
             ),
           ],
         ),
@@ -230,6 +329,16 @@ class AdminDashboardPage extends StatelessWidget {
       //     Navigator.of(context).pushNamed('/admin/register');
       //   },
       // ),
+      // Main action buttons
+      _MenuItem(
+        title: 'Mark Attendance',
+        subtitle: 'Use camera to mark attendance',
+        color: AppColors.warningOrange,
+        onTap: () {
+          Navigator.of(context).pushNamed('/attendance');
+        },
+        icon: Icons.camera_alt,
+      ),
       _MenuItem(
         icon: Icons.people,
         title: 'Members List',
@@ -252,7 +361,7 @@ class AdminDashboardPage extends StatelessWidget {
         icon: Icons.cloud_upload,
         title: 'Upload Templates',
         subtitle: 'Sync face templates',
-        color: AppColors.primaryPurple,
+        color: AppColors.secondary,
         onTap: () {
           context.read<AdminDashboardBloc>().add(UploadFaceTemplatesEvent());
         },
@@ -261,7 +370,7 @@ class AdminDashboardPage extends StatelessWidget {
         icon: Icons.upload_file,
         title: 'Upload Attendance',
         subtitle: 'Upload today\'s attendance',
-        color: AppColors.successGreen,
+        color: AppColors.warningOrange,
         onTap: () {
           context.read<AdminDashboardBloc>().add(UploadTodaysAttendanceEvent());
         },
@@ -270,7 +379,7 @@ class AdminDashboardPage extends StatelessWidget {
         icon: Icons.settings,
         title: 'Settings',
         subtitle: 'Configure app settings',
-        color: AppColors.primaryPurple,
+        color: AppColors.secondary,
         onTap: () {
           Navigator.of(context).pushNamed('/admin/settings');
         },

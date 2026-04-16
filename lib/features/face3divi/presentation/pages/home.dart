@@ -3,8 +3,6 @@ import 'package:fr3divi/core/theme/app_colors.dart';
 import 'package:fr3divi/core/theme/app_text_styles.dart';
 import '../widgets/modern_button.dart';
 
-/// Simplified HomePage for the new attendance system
-/// Shows role-based navigation (Admin/User)
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 

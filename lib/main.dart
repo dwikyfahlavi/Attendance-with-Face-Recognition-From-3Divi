@@ -11,7 +11,7 @@ import 'core/presentation/bloc/face_sdk_bloc.dart';
 import 'core/theme/app_theme.dart';
 import 'features/face3divi/data/hive_boxes.dart';
 import 'core/services/logger_service.dart';
-import 'features/face3divi/presentation/pages/home.dart';
+import 'features/face3divi/presentation/pages/loading_screen.dart';
 import 'features/face3divi/presentation/pages/admin_auth_page.dart';
 import 'features/face3divi/presentation/pages/admin_remote_login_page.dart';
 import 'features/face3divi/presentation/pages/admin_dashboard_page.dart';
@@ -31,6 +31,7 @@ import 'features/face3divi/presentation/bloc/user_session_bloc.dart';
 import 'features/face3divi/presentation/bloc/settings_bloc.dart';
 import 'features/face3divi/presentation/bloc/member_detail_bloc.dart';
 import 'features/face3divi/data/models/user_model.dart';
+import 'core/constants/app_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,6 +44,10 @@ Future<void> main() async {
     // Initialize service locator (manual DI)
     await serviceLocator.setup();
     logger.info('Service locator setup completed', tag: 'main');
+
+    // Initialize app configuration (version management from pubspec.yaml)
+    await AppConfig.initialize();
+    logger.info('App config initialized', tag: 'main');
 
     runApp(Phoenix(child: const AttendanceApp()));
 
@@ -289,9 +294,9 @@ class AppInitializer extends StatelessWidget {
                 'Face SDK initialization failed: ${sdkState.message}',
                 tag: 'AppInitializer',
               );
-              final isLicenseError = sdkState.message.contains(
-                'is_accept_license',
-              );
+
+              final isLicenseError = sdkState.message.contains('license');
+
               return ErrorInitScreen(
                 message: 'Face SDK Error: ${sdkState.message}',
                 isLicenseError: isLicenseError,
@@ -303,55 +308,22 @@ class AppInitializer extends StatelessWidget {
                 'App ready - Face SDK and cameras initialized',
                 tag: 'AppInitializer',
               );
-              return const HomePage();
+              return MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (context) => AdminRemoteLoginBloc(
+                      serviceLocator.remoteAuthRepository,
+                    ),
+                  ),
+                ],
+                child: const AdminRemoteLoginPage(),
+              );
             }
 
             return const LoadingScreen();
           },
         );
       },
-    );
-  }
-}
-
-/// Loading screen shown during initialization
-class LoadingScreen extends StatelessWidget {
-  const LoadingScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF6A11CB).withOpacity(0.8),
-              const Color(0xFF21D4FD).withOpacity(0.8),
-            ],
-          ),
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-              SizedBox(height: 24),
-              Text(
-                'Initializing...',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

@@ -285,12 +285,12 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
           });
         }
       }
-    } on StateError catch (e) {
+    } on StateError {
       // Controller was disposed - silently ignore
       if (mounted) {
         _isFlashOn = false;
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -14,6 +14,7 @@ class AdminMembersPage extends StatefulWidget {
 
 class _AdminMembersPageState extends State<AdminMembersPage> {
   late TextEditingController _searchController;
+  String? _selectedGang;
 
   @override
   void initState() {
@@ -49,35 +50,98 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.backgroundWhite,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.borderLight),
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search by name or Employee ID',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {});
-                            },
-                          )
-                        : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  onChanged: (_) {
-                    setState(() {});
-                  },
-                ),
+              child: BlocBuilder<UserListBloc, UserListState>(
+                builder: (context, state) {
+                  final availableGangs = (state is UserListLoaded)
+                      ? state.availableGangs
+                      : [];
+
+                  return Column(
+                    children: [
+                      // Gang Filter Dropdown
+                      if (availableGangs.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.backgroundWhite,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.borderLight),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                color: AppColors.primaryPurple,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DropdownButton<String?>(
+                                  value: _selectedGang,
+                                  hint: const Text('Filter by Gang'),
+                                  isExpanded: true,
+                                  underline: const SizedBox(),
+                                  items: [
+                                    const DropdownMenuItem<String?>(
+                                      value: null,
+                                      child: Text('All Gangs'),
+                                    ),
+                                    ...availableGangs.map((gang) {
+                                      return DropdownMenuItem<String?>(
+                                        value: gang,
+                                        child: Text(gang),
+                                      );
+                                    }),
+                                  ],
+                                  onChanged: (value) {
+                                    setState(() => _selectedGang = value);
+                                    context.read<UserListBloc>().add(
+                                      FilterUsersByGangEvent(value),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (availableGangs.isNotEmpty) const SizedBox(height: 12),
+                      // Search Field
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.backgroundWhite,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppColors.borderLight),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText: 'Search by name or Employee ID',
+                            prefixIcon: const Icon(Icons.search),
+                            suffixIcon: _searchController.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() {});
+                                    },
+                                  )
+                                : null,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          onChanged: (_) {
+                            setState(() {});
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
             Expanded(
@@ -109,8 +173,19 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
                   }
 
                   if (state is UserListLoaded) {
-                    final users = state.users;
+                    var users = state.users;
 
+                    // Filter by gang if selected
+                    if (_selectedGang != null) {
+                      users = users
+                          .where(
+                            (user) =>
+                                user.employeeGangAllotmentCode == _selectedGang,
+                          )
+                          .toList();
+                    }
+
+                    // Then filter by search
                     final filteredUsers = _searchController.text.isEmpty
                         ? users
                         : users

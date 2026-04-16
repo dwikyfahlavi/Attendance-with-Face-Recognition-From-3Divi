@@ -19,8 +19,8 @@ class SettingsModelAdapter extends TypeAdapter<SettingsModel> {
     return SettingsModel(
       checkInHour: fields[0] as int,
       checkInMinute: fields[1] as int,
-      checkOutHour: fields[2] as int,
-      checkOutMinute: fields[3] as int,
+      checkOutHour: fields[2] as int?,
+      checkOutMinute: fields[3] as int?,
       lastUpdated: fields[4] as DateTime,
       updatedBy: fields[5] as String?,
       faceRecognitionEnabled: fields[6] == null ? false : fields[6] as bool,
@@ -30,13 +30,15 @@ class SettingsModelAdapter extends TypeAdapter<SettingsModel> {
       employeeCode: fields[10] as String?,
       employeeName: fields[11] as String?,
       userId: fields[12] as String?,
+      unattendanceCode: fields[13] as String?,
+      attendanceCode: fields[14] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, SettingsModel obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.checkInHour)
       ..writeByte(1)
@@ -62,7 +64,11 @@ class SettingsModelAdapter extends TypeAdapter<SettingsModel> {
       ..writeByte(11)
       ..write(obj.employeeName)
       ..writeByte(12)
-      ..write(obj.userId);
+      ..write(obj.userId)
+      ..writeByte(13)
+      ..write(obj.unattendanceCode)
+      ..writeByte(14)
+      ..write(obj.attendanceCode);
   }
 
   @override

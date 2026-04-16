@@ -19,8 +19,15 @@ class HiveBoxes {
     Hive.registerAdapter(AdminPinModelAdapter());
     Hive.registerAdapter(SettingsModelAdapter());
 
-    // Open boxes
-    await Hive.openBox<RegisteredUser>(userBoxName);
+    // Open boxes with migration handling
+    // Open user box with error recovery for schema changes
+    try {
+      await Hive.openBox<RegisteredUser>(userBoxName);
+    } catch (e) {
+      // If opening fails (e.g., due to schema change), delete and reopen
+      await Hive.deleteBoxFromDisk(userBoxName);
+      await Hive.openBox<RegisteredUser>(userBoxName);
+    }
 
     // Open absen box with migration handling
     try {
@@ -31,7 +38,14 @@ class HiveBoxes {
       await Hive.openBox<AbsenModel>(absenBoxName);
     }
 
-    await Hive.openBox<AdminPinModel>(adminPinBoxName);
+    // Open admin pins box with error recovery
+    try {
+      await Hive.openBox<AdminPinModel>(adminPinBoxName);
+    } catch (e) {
+      // If opening fails (e.g., due to schema change), delete and reopen
+      await Hive.deleteBoxFromDisk(adminPinBoxName);
+      await Hive.openBox<AdminPinModel>(adminPinBoxName);
+    }
 
     // Open settings box with migration handling
     try {
@@ -59,6 +73,6 @@ class HiveBoxes {
     await userBox.clear();
     await absenBox.clear();
     await adminPinBox.clear();
-    await settingsBox.clear();
+    // await settingsBox.clear();
   }
 }

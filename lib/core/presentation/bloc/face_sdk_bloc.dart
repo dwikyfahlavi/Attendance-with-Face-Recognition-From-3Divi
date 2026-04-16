@@ -86,7 +86,7 @@ class FaceSdkBloc extends Bloc<FaceSdkEvent, FaceSdkState> {
   String _formatInitError(Object error) {
     final message = error.toString();
     if (message.contains('is_accept_license')) {
-      return '$message\n\nHot restart is not supported by the Face SDK license. Fully close the app (swipe away) and launch again.';
+      return 'The number of requested licenses has been exceeded. \n\nFully close the app (swipe away) and launch again.';
     }
     return message;
   }

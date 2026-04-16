@@ -160,11 +160,14 @@ class RemoteAuthRepository {
     final fieldStaff =
         (responseData['field_staff'] as Map<String, dynamic>?) ?? responseData;
     final employeeSchemaRaw = global['M_Employee_Schema'];
+    final attendanceSchemaRaw = global['T_Attendance_Schema'];
     final faceTemplateSchemaRaw = fieldStaff['Employee_Face_Template_Schema'];
 
-    // Assuming M_Employee_Schema is a JSON string, decode it
+    // Decode schemas
     final dynamic decodedSchema;
     final dynamic decodedFaceTemplateSchema;
+    final dynamic decodedAttendanceSchema;
+
     if (employeeSchemaRaw is String) {
       decodedSchema = jsonDecode(employeeSchemaRaw);
     } else {
@@ -176,6 +179,62 @@ class RemoteAuthRepository {
     } else {
       decodedFaceTemplateSchema = faceTemplateSchemaRaw;
     }
+
+    if (attendanceSchemaRaw is String) {
+      decodedAttendanceSchema = jsonDecode(attendanceSchemaRaw);
+    } else {
+      decodedAttendanceSchema = attendanceSchemaRaw;
+    }
+
+    // Extract valid employee codes from attendance schema
+    // Handles multiple attendance records per employee by extracting unique codes
+    final validEmployeeCodes = <String>{};
+    final attendanceInfoByEmployee = <String, Map<String, dynamic>>{};
+
+    if (decodedAttendanceSchema is List) {
+      for (final item in decodedAttendanceSchema) {
+        if (item is Map<String, dynamic>) {
+          final empCode = _toNullableString(item['attendance_employee_code']);
+          if (empCode != null && empCode.isNotEmpty) {
+            validEmployeeCodes.add(empCode);
+            // Store latest attendance info for this employee (overwrite if duplicate)
+            attendanceInfoByEmployee[empCode] = {
+              'attendance_employee_name': _toNullableString(
+                item['attendance_employee_name'],
+              ),
+              'attendance_gang_allotment_code': _toNullableString(
+                item['attendance_gang_allotment_code'],
+              ),
+              'attendance_date': _toNullableString(item['attendance_date']),
+              'attendance_code': _toNullableString(item['attendance_code']),
+            };
+          }
+        }
+      }
+    } else if (decodedAttendanceSchema is Map<String, dynamic>) {
+      final empCode = _toNullableString(
+        decodedAttendanceSchema['attendance_employee_code'],
+      );
+      if (empCode != null && empCode.isNotEmpty) {
+        validEmployeeCodes.add(empCode);
+        attendanceInfoByEmployee[empCode] = {
+          'attendance_employee_name': _toNullableString(
+            decodedAttendanceSchema['attendance_employee_name'],
+          ),
+          'attendance_gang_allotment_code': _toNullableString(
+            decodedAttendanceSchema['attendance_gang_allotment_code'],
+          ),
+          'attendance_date': _toNullableString(
+            decodedAttendanceSchema['attendance_date'],
+          ),
+          'attendance_code': _toNullableString(
+            decodedAttendanceSchema['attendance_code'],
+          ),
+        };
+      }
+    }
+
+    print(attendanceInfoByEmployee);
 
     final employeeItems = <Map<String, dynamic>>[];
     if (decodedSchema is List) {
@@ -203,8 +262,13 @@ class RemoteAuthRepository {
     for (final employeeData in employeeItems) {
       final apiJson = _mapEmployeeToApiJson(employeeData);
       final employeeId = (apiJson['employeeId'] ?? '').toString().trim();
+      final employeeCode = (apiJson['employeeCode'] ?? '').toString().trim();
       final employeeName = (apiJson['employeeName'] ?? '').toString().trim();
-      if (employeeId.isEmpty || employeeName.isEmpty) {
+
+      // Filter: only include employees that exist in attendance records
+      if (employeeId.isEmpty ||
+          employeeName.isEmpty ||
+          !validEmployeeCodes.contains(employeeCode)) {
         continue;
       }
 
@@ -249,6 +313,7 @@ class RemoteAuthRepository {
   ) {
     return {
       'employeeId': _readStringIfPresent(employeeData, 'employee_id') ?? '',
+      'employeeCode': _readStringIfPresent(employeeData, 'employee_code') ?? '',
       'employeeName': _readStringIfPresent(employeeData, 'employee_name') ?? '',
       'isAdmin': false,
       'department': _readStringIfPresent(employeeData, 'employee_profile'),
@@ -262,6 +327,10 @@ class RemoteAuthRepository {
       'employee_face_template': employeeData['employee_face_template'],
       'plantCode': _readStringIfPresent(employeeData, 'employee_vendor'),
       'isSynced': false,
+      'employeeGangAllotmentCode': _readStringIfPresent(
+        employeeData,
+        'employee_gang_allotment_code',
+      ),
     };
   }
 

@@ -39,6 +39,9 @@ class RegisteredUser extends HiveObject {
   @HiveField(12)
   bool isSynced = false;
 
+  @HiveField(13)
+  String? employeeGangAllotmentCode;
+
   RegisteredUser({
     required this.employeeId,
     required this.employeeName,
@@ -51,6 +54,7 @@ class RegisteredUser extends HiveObject {
     this.estateCode,
     this.plantCode,
     this.isSynced = false,
+    this.employeeGangAllotmentCode,
   });
 
   Map<String, dynamic> toApiJson() {
@@ -66,6 +70,7 @@ class RegisteredUser extends HiveObject {
       'estateCode': estateCode,
       'plantCode': plantCode,
       'isSynced': isSynced,
+      'employeeGangAllotmentCode': employeeGangAllotmentCode,
     };
   }
 
@@ -90,6 +95,9 @@ class RegisteredUser extends HiveObject {
       estateCode: json['estateCode']?.toString() ?? existing?.estateCode,
       plantCode: json['plantCode']?.toString() ?? existing?.plantCode,
       isSynced: json['isSynced'] == true ? true : (existing?.isSynced ?? false),
+      employeeGangAllotmentCode:
+          json['employeeGangAllotmentCode']?.toString() ??
+          existing?.employeeGangAllotmentCode,
     );
   }
 

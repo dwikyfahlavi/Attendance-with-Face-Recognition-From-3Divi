@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/constants/app_config.dart';
 // import '../../../../core/di/service_locator.dart';
 import '../bloc/settings_bloc.dart';
 import '../widgets/modern_button.dart';
@@ -588,9 +589,9 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                 subtitle: 'Application information',
                 child: Column(
                   children: [
-                    _buildInfoRow('App Version', 'v1.0.0'),
+                    _buildInfoRow('App Version', AppConfig.appVersion),
                     const SizedBox(height: 12),
-                    _buildInfoRow('Build', '1'),
+                    _buildInfoRow('Build', AppConfig.buildNumber),
                   ],
                 ),
               ),

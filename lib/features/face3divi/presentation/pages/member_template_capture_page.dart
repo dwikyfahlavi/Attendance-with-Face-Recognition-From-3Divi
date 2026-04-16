@@ -204,12 +204,12 @@ class _MemberTemplateCapturePageState extends State<MemberTemplateCapturePage> {
           });
         }
       }
-    } on StateError catch (e) {
+    } on StateError {
       // Controller was disposed - silently ignore
       if (mounted && !_isInitializing) {
         _isFlashOn = false;
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted && !_isInitializing) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

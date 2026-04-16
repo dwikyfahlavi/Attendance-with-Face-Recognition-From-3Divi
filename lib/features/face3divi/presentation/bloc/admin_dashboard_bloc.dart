@@ -94,6 +94,10 @@ class AdminDashboardAttendanceUploadError extends AdminDashboardState {
   const AdminDashboardAttendanceUploadError(this.message);
 }
 
+class AdminDashboardNoAttendance extends AdminDashboardState {
+  const AdminDashboardNoAttendance();
+}
+
 // BLoC
 class AdminDashboardBloc
     extends Bloc<AdminDashboardEvent, AdminDashboardState> {
@@ -316,8 +320,30 @@ class AdminDashboardBloc
   ) async {
     emit(const AdminDashboardAttendanceUploading());
     try {
+      // Check if there's attendance to upload for today
+      final allAttendance = await _absenRepository.getAllAttendance();
+      final today = DateTime.now();
+      final todayStart = DateTime(today.year, today.month, today.day);
+      final todayEnd = DateTime(today.year, today.month, today.day, 23, 59, 59);
+
+      final todayAttendance = allAttendance
+          .where(
+            (record) =>
+                record.jamAbsen.isAfter(todayStart) &&
+                record.jamAbsen.isBefore(todayEnd) &&
+                !record.isUploaded,
+          )
+          .toList();
+
+      if (todayAttendance.isEmpty) {
+        emit(const AdminDashboardNoAttendance());
+        await _loadAndEmitDashboardData(emit);
+        return;
+      }
+
       final message = await _absenRepository.uploadTodaysAttendance();
       emit(AdminDashboardAttendanceUploadSuccess(message));
+      await _loadAndEmitDashboardData(emit);
     } catch (e) {
       emit(AdminDashboardAttendanceUploadError(e.toString()));
     }

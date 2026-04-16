@@ -27,13 +27,15 @@ class RegisteredUserAdapter extends TypeAdapter<RegisteredUser> {
       companyCode: fields[9] as String?,
       estateCode: fields[10] as String?,
       plantCode: fields[11] as String?,
+      isSynced: fields[12] as bool,
+      employeeGangAllotmentCode: fields[13] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, RegisteredUser obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.employeeId)
       ..writeByte(1)
@@ -53,7 +55,11 @@ class RegisteredUserAdapter extends TypeAdapter<RegisteredUser> {
       ..writeByte(10)
       ..write(obj.estateCode)
       ..writeByte(11)
-      ..write(obj.plantCode);
+      ..write(obj.plantCode)
+      ..writeByte(12)
+      ..write(obj.isSynced)
+      ..writeByte(13)
+      ..write(obj.employeeGangAllotmentCode);
   }
 
   @override
