@@ -5,6 +5,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../data/hive_boxes.dart';
 import '../bloc/admin_dashboard_bloc.dart';
+import '../bloc/user_session_bloc.dart';
 
 class AdminDashboardPage extends StatelessWidget {
   final String name;
@@ -59,7 +60,7 @@ class AdminDashboardPage extends StatelessWidget {
               const SizedBox(height: 16),
             ],
             const Text(
-              'All app data (users, attendance records, settings) will be permanently deleted from this device.',
+              'All app data (users, attendance records) will be permanently deleted from this device.',
             ),
             const SizedBox(height: 12),
             const Text(
@@ -78,10 +79,16 @@ class AdminDashboardPage extends StatelessWidget {
               Navigator.of(dialogContext).pop();
               try {
                 await HiveBoxes.clearAllBoxes();
+                await serviceLocator.settingsRepository
+                    .clearCurrentUserSession();
                 if (context.mounted) {
-                  Navigator.of(
-                    context,
-                  ).pushNamedAndRemoveUntil('/', (route) => false);
+                  context.read<UserSessionBloc>().add(UserLoggedOutEvent());
+                }
+                if (context.mounted) {
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/admin/login-api',
+                    (route) => false,
+                  );
                 }
               } catch (e) {
                 if (context.mounted) {

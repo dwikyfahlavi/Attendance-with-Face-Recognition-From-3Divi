@@ -308,20 +308,49 @@ class AppInitializer extends StatelessWidget {
                 'App ready - Face SDK and cameras initialized',
                 tag: 'AppInitializer',
               );
-              return MultiBlocProvider(
-                providers: [
-                  BlocProvider(
-                    create: (context) => AdminRemoteLoginBloc(
-                      serviceLocator.remoteAuthRepository,
-                    ),
-                  ),
-                ],
-                child: const AdminRemoteLoginPage(),
-              );
+              return const _AuthGate();
             }
 
             return const LoadingScreen();
           },
+        );
+      },
+    );
+  }
+}
+
+class _AuthGate extends StatelessWidget {
+  const _AuthGate();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: serviceLocator.settingsRepository.getSettings(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const LoadingScreen();
+        }
+
+        final settings = snapshot.data;
+        final userId = settings?.userId?.trim();
+        final isLoggedIn = userId != null && userId.isNotEmpty;
+
+        if (isLoggedIn) {
+          final name = (settings?.employeeName ?? '').trim();
+          return BlocProvider(
+            create: (context) => AdminDashboardBloc(
+              serviceLocator.userRepository,
+              serviceLocator.absenRepository,
+              serviceLocator.remoteAuthRepository,
+            )..add(LoadDashboardEvent()),
+            child: AdminDashboardPage(name),
+          );
+        }
+
+        return BlocProvider(
+          create: (context) =>
+              AdminRemoteLoginBloc(serviceLocator.remoteAuthRepository),
+          child: const AdminRemoteLoginPage(),
         );
       },
     );

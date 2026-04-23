@@ -191,4 +191,30 @@ class SettingsRepository {
       throw Exception('Failed to update current employee: $e');
     }
   }
+
+  Future<void> clearCurrentUserSession() async {
+    try {
+      final current = await getSettings();
+      final cleared = SettingsModel(
+        checkInHour: current.checkInHour,
+        checkInMinute: current.checkInMinute,
+        checkOutHour: current.checkOutHour,
+        checkOutMinute: current.checkOutMinute,
+        lastUpdated: DateTime.now(),
+        updatedBy: current.updatedBy,
+        faceRecognitionEnabled: current.faceRecognitionEnabled,
+        baseProtocol: current.baseProtocol,
+        ipPort: current.ipPort,
+        apiPath: current.apiPath,
+        employeeCode: '',
+        employeeName: '',
+        userId: null,
+        attendanceCode: '',
+        unattendanceCode: '',
+      );
+      await _settingsBox.put(_defaultKey, cleared);
+    } catch (e) {
+      throw Exception('Failed to clear user session: $e');
+    }
+  }
 }

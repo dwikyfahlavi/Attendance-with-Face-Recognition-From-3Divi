@@ -69,10 +69,37 @@ class HiveBoxes {
       Hive.box<SettingsModel>(settingsBoxName);
 
   /// Clear all data - useful for fresh start
+  /// Also clears userId and related session fields from settings while preserving API config
   static Future<void> clearAllBoxes() async {
     await userBox.clear();
     await absenBox.clear();
     await adminPinBox.clear();
-    // await settingsBox.clear();
+
+    // Clear userId from settings while preserving other settings
+    try {
+      final settings = settingsBox.get('settings');
+      if (settings != null) {
+        final clearedSettings = SettingsModel(
+          checkInHour: settings.checkInHour,
+          checkInMinute: settings.checkInMinute,
+          checkOutHour: settings.checkOutHour,
+          checkOutMinute: settings.checkOutMinute,
+          lastUpdated: DateTime.now(),
+          updatedBy: settings.updatedBy,
+          faceRecognitionEnabled: settings.faceRecognitionEnabled,
+          baseProtocol: settings.baseProtocol,
+          ipPort: settings.ipPort,
+          apiPath: settings.apiPath,
+          userId: null,
+          employeeCode: '',
+          employeeName: '',
+          attendanceCode: '',
+          unattendanceCode: '',
+        );
+        await settingsBox.put('settings', clearedSettings);
+      }
+    } catch (e) {
+      // Silently ignore if settings clearing fails
+    }
   }
 }
