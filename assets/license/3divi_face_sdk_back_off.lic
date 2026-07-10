@@ -1,16 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <License>
 	<name>3DiVi Face SDK License</name>
-	<cc>License#64622 - FSDK DevPack #0, allan.lee@ioigroup.com</cc>
+	<cc>License#65031 - FSDK DevPack #0, allan.lee@ioigroup.com</cc>
 	<version>3.0.1.2</version>
-	<max_sdk_version>3.29</max_sdk_version>
-	<Reg>0</Reg>
-	<online_license_id>license:64622:LzEWvj15ASVabpgJ</online_license_id>
-	<online_license_server>http://cognitive.3divi.com/license/processing/</online_license_server>
-	<online_license_update_timeout>3600</online_license_update_timeout>
-	<online_try_update_timeout>300</online_try_update_timeout>
+	<max_sdk_version>3.30</max_sdk_version>
+	<valid>2026-Jun-15</valid>
 	<matcher6>1</matcher6>
-	<matcher6v2>1</matcher6v2>
+	<matcher6v2>1</matcher6v2>`
 	<matcher6v3>1</matcher6v3>
 	<matcher6v4>1</matcher6v4>
 	<matcher6v5>1</matcher6v5>
@@ -140,8 +136,7 @@
 	<liveness_estimator>1</liveness_estimator>
 	<liveness_2d_estimator>1</liveness_2d_estimator>
 	<active_liveness_estimator>1</active_liveness_estimator>
-	<depth_liveness_estimator>1</depth_liveness_estimator>
-	<ir_liveness_estimator>1</ir_liveness_estimator>
-	<Hardware>0f77c6ae59a1db75969fadef1937c151cb5a4c98db81735cb64cf3626109610d</Hardware>
-	<Signature>&#10;-----BEGIN SIGNATURE-----&#10;M7OLA7W1ORJ7HvHoMzcbhjv3102Cv+iOb7w4JhdxQhjc2cEZVUfK/tCWEliXar7I&#10;/wMHyR/2kxg3jVNGvn2OE92B3bYAPjTsRT3ccuzNHmcYauo1rI+1OVySjfoxLGCz&#10;yyQC13PKFAAW0PK0qvfGbOf/oznk8qQgV1jq9GiYWhbVvH1uSo7iZoKQ1Dx58JHw&#10;XEPIkkCET8bPCRVP95KlCrK7LOwcPrViVj+cy1FfWXWFYgVYs0rWlie630meSiRX&#10;udCrZEd25ZMoqK4Hjo2E7mSsZDeKZ7C/YIhOdgRqe51WoXWL6japl8ctgJerKvlS&#10;NxiohC32x/kyliYCl6X53w==&#10;-----END SIGNATURE-----&#10;</Signature>
+	<depth_liveness_estimator>0</depth_liveness_estimator>
+	<ir_liveness_estimator>0</ir_liveness_estimator>
+	<Signature>&#10;-----BEGIN SIGNATURE-----&#10;N0kf6ZzKhm024ggs0NVYmM4bP2cNU7LkYoK8C/QHhgUHCsi4M8NxLapTGTp7uSIk&#10;RS9Zb//Y8p3pmUXXuWMklOADRerX6vT3REu9laUxQyves5F5iFhhlis11YSAChj5&#10;pkgOYEBBGYM9MKfj2hven8XVzrO+uGowu5uHjRKzcizFeeFY2Fr6WJNWkzMK0tVM&#10;EuBZ1oF0FTaV+XDqm0NFI+dqvYeLywNF7/Cw+bmWSnuYtCPJlRyvcDj2RKKxy7G0&#10;mh56JrgFAvfqszosRm3cd0TwmX62g3pZ5ypSqDRi7al030RElQPOo6cZbfn4YR8y&#10;9hn5afp+EcmNHGbhOoh2Gw==&#10;-----END SIGNATURE-----&#10;</Signature>
 </License>

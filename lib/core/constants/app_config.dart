@@ -13,7 +13,7 @@ class AppConfig {
 
   /// Get app version from build config (e.g., "1.0.0")
   static String get appVersion {
-    return _packageInfo?.version ?? '1.0.2';
+    return _packageInfo?.version ?? '1.0.3';
   }
 
   /// Get build number from build config (e.g., "1")
